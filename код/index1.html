@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIBERone — Учёт</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --kiber-teal: #00c4b3; --teal-deep: #00857a; --teal-dark: #00655d; --mint: #7ef0e4;
+    --kiber-yellow: #ffd200; --amber: #e08a00; --amber-bright: #ffb020;
+    --kiber-blue: #0056b3; --electric: #2f7bff; --violet: #7b5cff; --violet-deep: #4a2fd0;
+    --kiber-red: #b12628; --danger: #d64545; --kiber-green: #2e9e5b;
+    --kiber-dark: #242424; --ink-soft: #5c6664; --kiber-white: #ffffff;
+    --scrim: rgba(6, 42, 39, .55);
+    --spring: cubic-bezier(.34, 1.56, .64, 1); --ease: cubic-bezier(.22, .61, .36, 1);
+    --shadow-1: 0 2px 10px rgba(0, 40, 36, .06); --shadow-2: 0 6px 20px rgba(0, 40, 36, .12); --shadow-3: 0 14px 40px rgba(0, 40, 36, .22);
+  }
+  * { box-sizing: border-box; }
+  * { scrollbar-width: thin; scrollbar-color: #00c4b3 rgba(0, 133, 122, .14); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: rgba(0, 133, 122, .12); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #00c4b3, #00857a); border-radius: 10px; border: 2px solid rgba(255, 255, 255, .65); }
+  ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #ffd200, #e08a00); }
+  .ms-options { scrollbar-color: #7b5cff rgba(123, 92, 255, .14); }
+  .ms-options::-webkit-scrollbar-track { background: rgba(123, 92, 255, .12); }
+  .ms-options::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #9b7dff, #6a45f0); }
+  .ms-options::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #ffd200, #e08a00); }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: linear-gradient(160deg, #00c4b3 0%, #00a99b 45%, #00857a 100%);
+    background-attachment: fixed; margin: 0; padding: 20px; color: var(--kiber-dark);
+    min-height: 100vh; overflow-x: hidden;
+  }
+  body.modal-open { overflow: hidden; }
+
+  .bg-scene { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; }
+  .blob-a { width: 46vw; height: 46vw; top: -12vw; left: -10vw; background: radial-gradient(circle at 35% 35%, rgba(255, 210, 0, .65), transparent 62%); animation: driftA 34s ease-in-out infinite alternate; }
+  .blob-b { width: 42vw; height: 42vw; top: 18vh; right: -14vw; background: radial-gradient(circle at 60% 40%, rgba(47, 123, 255, .5), transparent 62%); animation: driftB 40s ease-in-out infinite alternate; }
+  .blob-c { width: 50vw; height: 50vw; bottom: -20vw; left: 16vw; background: radial-gradient(circle at 50% 50%, rgba(126, 240, 228, .6), transparent 60%); animation: driftC 28s ease-in-out infinite alternate; }
+  .grain { position: absolute; inset: 0; opacity: .055; mix-blend-mode: soft-light; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='0.6'/></svg>"); }
+  .glyph { position: absolute; font-weight: 900; color: rgba(255, 255, 255, .14); font-size: var(--s, 40px); user-select: none; animation: floatGlyph var(--d, 12s) ease-in-out infinite alternate; text-shadow: 0 4px 30px rgba(255, 255, 255, .15); }
+  @keyframes driftA { from { transform: translate(0,0) scale(1); } to { transform: translate(9vw,7vh) scale(1.18); } }
+  @keyframes driftB { from { transform: translate(0,0) scale(1.1); } to { transform: translate(-8vw,-6vh) scale(.92); } }
+  @keyframes driftC { from { transform: translate(0,0) scale(.95); } to { transform: translate(6vw,-8vh) scale(1.15); } }
+  @keyframes floatGlyph { from { transform: translateY(-14px) rotate(-5deg); } to { transform: translateY(16px) rotate(6deg); } }
+
+  .container { max-width: 940px; margin: 0 auto; position: relative; z-index: 1; }
+  h1, h2 { font-weight: 800; margin-top: 0; }
+  h2 { font-size: 22px; color: var(--kiber-white); border-bottom: 3px solid var(--kiber-yellow); display: inline-block; padding-bottom: 5px; margin-bottom: 15px; text-shadow: 0 2px 12px rgba(0,60,55,.25); }
+  h2.camps-title { border-bottom-color: var(--amber-bright); margin-top: 26px; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(.92) translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes popIn { 0% { opacity: 0; transform: scale(.55); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes itemIn { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+  @keyframes avatarIn { from { opacity: 0; transform: scale(.5) rotate(-10deg); } to { opacity: 1; transform: none; } }
+  @keyframes ringPulse { 0% { transform: scale(.92); opacity: .9; } 70% { transform: scale(1.18); opacity: 0; } 100% { opacity: 0; } }
+  @keyframes shake { 10%,90% { transform: translateX(-2px); } 20%,80% { transform: translateX(4px); } 30%,50%,70% { transform: translateX(-6px); } 40%,60% { transform: translateX(6px); } }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes ripple { to { transform: scale(3.4); opacity: 0; } }
+  @keyframes loadSlide { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(48px) scale(.94); } to { opacity: 1; transform: none; } }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(48px) scale(.9); } }
+  @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
+  @keyframes cellPop { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
+  @keyframes collapseOut { to { opacity: 0; transform: translateX(28px) scale(.96); max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; } }
+  @keyframes addedGlow { 0% { box-shadow: 0 0 0 4px rgba(255,210,0,.85), var(--shadow-2); background: #fffbe0; } 100% { box-shadow: var(--shadow-1); background: var(--kiber-white); } }
+  @keyframes rowFlash { 0% { background: #efeaff; border-color: #c9b8ff; } 100% { background: #f9fbfa; border-color: #e0e0e0; } }
+  @keyframes autoPulse { 0% { background: #fff3cf; border-color: #ffcf4d; } 100% { background: #f6f3ff; border-color: #d9cdff; } }
+  @keyframes bounceSoft { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+  @keyframes pulseDot { 0%,100% { transform: scale(1); } 50% { transform: scale(1.4); } }
+  @keyframes tabPop { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+  @keyframes appLeave { to { opacity: 0; transform: translateY(14px) scale(.985); } }
+
+  #login-screen { background: var(--kiber-white); max-width: 420px; margin: 50px auto; padding: 30px; border-radius: 20px; box-shadow: var(--shadow-3); position: relative; overflow: hidden; }
+  #login-screen::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--kiber-teal), var(--kiber-yellow), var(--electric), var(--kiber-teal)); background-size: 300% 100%; animation: shimmer 5s linear infinite; }
+  .login-enter { animation: scaleIn .55s var(--spring); }
+  .login-enter .welcome-title { animation: fadeDown .55s .05s var(--ease) backwards; }
+  .login-enter label { animation: fadeUp .5s var(--ease) backwards; }
+  .login-enter label:nth-of-type(1) { animation-delay: .12s; }
+  .login-enter label:nth-of-type(2) { animation-delay: .2s; }
+  .login-enter #login-btn { animation: fadeUp .5s .28s var(--ease) backwards; }
+  .welcome-title { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; font-size: 22px; font-weight: 800; margin: 0 0 25px; text-align: center; line-height: 1.2; }
+  .welcome-logo { height: 50px; width: auto; animation: popIn .6s var(--spring); }
+  .welcome-logo-fallback { color: var(--kiber-teal); font-weight: 900; font-size: 22px; display: none; }
+  #login-screen label { display: block; margin-bottom: 15px; font-weight: 600; font-size: 14px; }
+  #login-screen input { width: 100%; margin-top: 5px; }
+  #login-screen button { width: 100%; margin-top: 10px; }
+  .hidden { display: none !important; }
+  .error { color: var(--kiber-red); font-weight: 600; margin-top: 10px; display: none; font-size: 14px; text-align: center; }
+  .error.shake { animation: shake .45s; }
+
+  .app-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: rgba(255,255,255,.93); backdrop-filter: blur(10px); padding: 15px 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: var(--shadow-1); position: sticky; top: 10px; z-index: 60; transition: box-shadow .25s; }
+  .app-header.scrolled { box-shadow: var(--shadow-2); }
+  .app-header p { margin: 0; font-weight: 600; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .app-header button { background: var(--kiber-dark); color: #fff; padding: 8px 15px; font-weight: 600; }
+  .app-header button:hover { background: var(--kiber-red); transform: translateY(-1px); }
+  .conn-badge { font-size: 11px; font-weight: 800; letter-spacing: .5px; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; background: #e6f9f8; color: #00857a; }
+  .conn-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--kiber-green); animation: pulseDot 2s ease-in-out infinite; }
+  .app-enter .app-header { animation: fadeDown .5s var(--ease) backwards; }
+  .app-enter .tab-btn { animation: fadeUp .5s var(--ease) backwards; }
+  .app-enter .tab-btn:nth-child(1) { animation-delay: .08s; }
+  .app-enter .tab-btn:nth-child(2) { animation-delay: .14s; }
+  .app-enter .tab-btn:nth-child(3) { animation-delay: .2s; }
+  .app-enter .tab-btn:nth-child(4) { animation-delay: .26s; }
+  .app-enter .screen.active { animation: fadeUp .55s .12s var(--ease) backwards; }
+  .app-leave { animation: appLeave .24s var(--ease) forwards; }
+
+  .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn { font-size: 15px; font-weight: 700; padding: 10px 20px; background: var(--kiber-white); color: var(--teal-deep); border: 2px solid transparent; border-radius: 30px; transition: all .2s var(--ease); box-shadow: var(--shadow-1); display: inline-flex; align-items: center; gap: 8px; }
+  .tab-btn svg { width: 16px; height: 16px; }
+  .tab-btn:hover { background: #e6f9f8; transform: translateY(-2px); box-shadow: var(--shadow-2); }
+  .tab-btn.active { background: var(--kiber-yellow); color: var(--kiber-dark); border-color: var(--kiber-yellow); box-shadow: 0 6px 16px rgba(255,210,0,.45); animation: tabPop .35s var(--spring); }
+  .screen-anim { animation: fadeUp .45s var(--ease); }
+
+  .section, .search-box { background: var(--kiber-white); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: var(--shadow-1); }
+  input, select, button { font-family: 'Montserrat', sans-serif; font-size: 14px; padding: 10px 12px; margin: 4px 0; border-radius: 10px; border: 2px solid #e0e0e0; outline: none; transition: border-color .2s, box-shadow .2s, background .2s, color .2s; }
+  input:focus, select:focus { border-color: var(--kiber-teal); box-shadow: 0 0 0 4px rgba(0,196,179,.16); }
+  .section input, .section select { width: 100%; max-width: 300px; margin-right: 10px; }
+  button { cursor: pointer; font-weight: 600; border: none; transition: all .2s var(--ease); position: relative; overflow: hidden; }
+  button:disabled { cursor: wait; }
+
+  .ripple { position: absolute; border-radius: 50%; background: rgba(0,100,90,.18); transform: scale(0); animation: ripple .55s var(--ease) forwards; pointer-events: none; }
+  .del-btn .ripple, .btn-danger .ripple, .app-header button .ripple, .btn-camp .ripple { background: rgba(255,255,255,.4); }
+  .busy { color: transparent !important; pointer-events: none; }
+  .busy::after { content: ''; position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border: 3px solid rgba(0,0,0,.18); border-top-color: var(--kiber-dark); border-radius: 50%; animation: spin .7s linear infinite; }
+  .app-header button.busy::after, .btn-danger.busy::after { border-color: rgba(255,255,255,.3); border-top-color: #fff; }
+
+  .add-btn { background: var(--kiber-yellow); color: var(--kiber-dark); padding: 10px 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(255,210,0,.35); }
+  .add-btn::before, .btn-camp::before { content: ''; position: absolute; top: 0; left: -70%; width: 40%; height: 100%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent); transform: skewX(-20deg); transition: left .5s var(--ease); }
+  .add-btn:hover::before, .btn-camp:hover::before { left: 130%; }
+  .add-btn:hover { background: #e6bd00; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,210,0,.45); }
+  .btn-camp { background: linear-gradient(135deg, #ffb020, #e08a00); color: #fff; padding: 10px 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(224,138,0,.35); display: inline-flex; align-items: center; gap: 8px; }
+  .btn-camp:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 8px 20px rgba(224,138,0,.45); }
+  .del-btn { background: #ffe5e5; color: var(--kiber-red); padding: 6px 12px; border-radius: 8px; }
+  .del-btn:hover { background: var(--kiber-red); color: #fff; transform: translateY(-1px); }
+  .section button:not(.add-btn):not(.del-btn):not(.btn-camp), .item-header button:not(.del-btn) { background: #e6f9f8; color: var(--teal-deep); padding: 6px 12px; border-radius: 8px; }
+  .section button:not(.add-btn):not(.del-btn):not(.btn-camp):hover, .item-header button:not(.del-btn):hover { background: var(--kiber-teal); color: #fff; }
+  .mini-btn { background: #eef4f3; color: var(--ink-soft); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; margin: 0; }
+  .mini-btn:hover { background: var(--kiber-teal); color: #fff; transform: translateY(-1px); }
+
+  .item { margin-bottom: 15px; }
+  .item-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 15px; background: var(--kiber-white); border-radius: 15px; box-shadow: var(--shadow-1); transition: box-shadow .2s, transform .2s var(--ease); flex-wrap: wrap; gap: 10px; }
+  .item-header:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
+  .item-name { flex: 1; font-weight: 800; font-size: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .item-actions { display: flex; gap: 8px; margin-left: auto; }
+  .item.item-inactive { opacity: .62; }
+  .item.camp-item .item-header { background: linear-gradient(180deg, #fffdf6, #ffffff); }
+  .anim .item { animation: itemIn .45s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+  .anim .tag-badge { animation: popIn .35s var(--spring) backwards; animation-delay: calc(var(--i, 0) * 45ms + .1s); }
+  .removing { overflow: hidden; animation: collapseOut .3s var(--ease) forwards; pointer-events: none; }
+  .just-added .item-header, .just-added.item-header { animation: addedGlow 1.5s var(--ease); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .dot-on { background: var(--kiber-green); animation: pulseDot 2.2s ease-in-out infinite; box-shadow: 0 0 8px rgba(46,158,91,.6); }
+  .dot-off { background: #b9c2c0; }
+  .tag-badge { background: #e6f9f8; color: #00857a; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700; border: 1px solid #b7ebe6; white-space: nowrap; }
+  .tag-badge.camp-badge { background: #fff1d6; color: #a06a00; border-color: #ffd98a; }
+  .tag-badge.time-badge { background: #e8f0ff; color: #0056b3; border-color: #bcd4ff; font-variant-numeric: tabular-nums; }
+  .tag-badge.daily-badge { background: #fff1d6; color: #a06a00; border-color: #ffd98a; }
+  .tag-badge.span-badge { background: #f2ecff; color: var(--violet-deep); border-color: #d9cdff; font-variant-numeric: tabular-nums; }
+  .students-stats { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 16px; }
+  .stat-chip { background: rgba(255,255,255,.92); border-radius: 20px; padding: 5px 13px; font-size: 12px; font-weight: 700; color: var(--ink-soft); box-shadow: var(--shadow-1); animation: fadeUp .4s var(--ease) backwards; }
+  .stat-chip b { color: var(--kiber-dark); }
+  .chip-green b { color: var(--kiber-green); }
+  .chip-red b { color: var(--kiber-red); }
+  .chip-blue b { color: var(--kiber-blue); }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; width: 100%; height: 100%; background: var(--scrim); z-index: 1000; justify-content: center; align-items: center; opacity: 0; transition: opacity .22s var(--ease), backdrop-filter .22s; backdrop-filter: blur(0px); }
+  .modal-overlay.active { display: flex; }
+  .modal-overlay.show { opacity: 1; backdrop-filter: blur(4px); }
+  .modal { background: var(--kiber-white); padding: 30px; border-radius: 20px; width: 92%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-3); transform: translateY(26px) scale(.94); opacity: 0; transition: transform .28s var(--spring), opacity .2s var(--ease); }
+  .modal-overlay.show .modal { transform: none; opacity: 1; }
+  .modal h3 { margin-top: 0; font-size: 22px; margin-bottom: 20px; font-weight: 800; }
+  .modal label { display: block; margin-top: 15px; font-weight: 600; font-size: 14px; }
+  .modal input, .modal select { width: 100%; margin-top: 5px; }
+  .modal-actions { margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px; }
+  .camp-note { display: flex; align-items: center; gap: 8px; background: #fff1d6; color: #a06a00; border: 1px solid #ffd98a; border-radius: 12px; padding: 10px 12px; font-weight: 700; font-size: 13px; margin-bottom: 6px; animation: fadeUp .3s var(--ease); line-height: 1.4; }
+  .btn-save { background: var(--kiber-yellow); color: var(--kiber-dark); padding: 12px 25px; border-radius: 30px; font-size: 16px; box-shadow: 0 4px 14px rgba(255,210,0,.35); }
+  .btn-save:hover { background: #e6bd00; transform: translateY(-1px); }
+  .btn-cancel { background: #eee; color: var(--kiber-dark); padding: 12px 25px; border-radius: 30px; font-size: 16px; }
+  .btn-cancel:hover { background: #ddd; }
+  .btn-danger { background: linear-gradient(135deg, #d64545, #b12628); color: #fff; padding: 12px 25px; border-radius: 30px; font-size: 16px; box-shadow: 0 6px 18px rgba(177,38,40,.38); }
+  .btn-danger:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  .confirm-icon { width: 64px; height: 64px; border-radius: 50%; background: #ffe5e5; color: var(--kiber-red); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; animation: popIn .45s var(--spring); }
+  .confirm-icon svg { width: 30px; height: 30px; }
+  #confirm-modal .modal { text-align: center; max-width: 420px; }
+  #confirm-modal .modal-actions { justify-content: center; }
+  #confirm-message { color: var(--ink-soft); font-weight: 600; line-height: 1.5; margin: 0; }
+
+  .picker { border: 2px solid #e3ecea; border-radius: 14px; background: #fbfdfc; overflow: hidden; margin-top: 8px; }
+  .picker-toolbar { padding: 10px; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(180deg, #f0fbfa, #fbfdfc); border-bottom: 1px solid #e3ecea; }
+  .picker-search-wrap { position: relative; display: flex; align-items: center; }
+  .picker-search-wrap > svg { position: absolute; left: 11px; width: 16px; height: 16px; color: #7d918e; pointer-events: none; }
+  .picker .picker-search { width: 100%; margin: 0; padding: 9px 34px; border-radius: 10px; font-size: 13px; }
+  .picker-clear { position: absolute; right: 5px; background: transparent; color: #9aa5a3; padding: 4px 8px; font-size: 13px; border-radius: 8px; margin: 0; display: none; }
+  .picker-clear:hover { color: var(--kiber-red); background: #ffe5e5; }
+  .picker-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .picker-toggle.is-on { background: var(--kiber-teal); color: #fff; box-shadow: 0 4px 12px rgba(0,196,179,.35); }
+  .picker-meta { padding: 7px 12px; font-size: 12px; font-weight: 700; color: #7d918e; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #eef4f3; }
+  .picker-meta b { color: var(--teal-deep); font-size: 13px; }
+  .student-checkbox-list { max-height: 250px; overflow-y: auto; padding: 8px; }
+  .student-checkbox-list .pick-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; margin: 0 0 4px; font-weight: 600; cursor: pointer; transition: background .15s, transform .15s var(--ease), border-color .15s; border: 1px solid transparent; }
+  .student-checkbox-list .pick-row:hover { background: #e6f9f8; transform: translateX(3px); }
+  .student-checkbox-list .pick-row.is-checked { background: #e6f9f8; border-color: #b7ebe6; }
+  .student-checkbox-list .pick-row input[type="checkbox"] { width: auto; margin: 0; transform: scale(1.25); accent-color: var(--kiber-teal); cursor: pointer; flex-shrink: 0; }
+  .pick-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .pick-name { font-weight: 700; font-size: 14px; line-height: 1.2; }
+  .pick-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .mini-tag { font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 8px; background: #eef4f3; color: #6b7a78; white-space: nowrap; }
+  .mini-tag.warn { background: #fff1d6; color: #a06a00; }
+  .mini-tag.off { background: #ffe5e5; color: var(--kiber-red); }
+  .picker-empty { padding: 20px 14px; text-align: center; color: #8a9492; font-weight: 700; font-size: 13px; display: none; }
+  .picker-empty span { display: block; font-weight: 600; font-size: 12px; margin-top: 4px; color: #a8b2b0; }
+
+  .module-list-item { display: flex; flex-direction: column; align-items: stretch; background: #f9fbfa; padding: 10px; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e0e0e0; gap: 8px; animation: itemIn .3s var(--ease); }
+  .module-list-item.row-moved { animation: rowFlash .6s var(--ease); }
+  .plan-row-head { display: flex; align-items: center; gap: 8px; width: 100%; }
+  .plan-index { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #9b7dff, #6a45f0); color: #fff; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 8px rgba(123,92,255,.35); }
+  .ms-combo { flex: 1; min-width: 0; position: relative; }
+  .ms-control { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #fff; border: 2px solid #e0e0e0; border-radius: 10px; padding: 8px 10px; font-weight: 700; font-size: 13px; color: var(--kiber-dark); text-align: left; margin: 0; }
+  .ms-control:hover { border-color: #b9a6ff; }
+  .ms-combo.open .ms-control { border-color: var(--violet); box-shadow: 0 0 0 4px rgba(123,92,255,.15); }
+  .ms-control .ms-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-control.is-empty .ms-label { color: #9aa5a3; font-weight: 600; }
+  .ms-caret { transition: transform .25s var(--ease); color: var(--violet); flex-shrink: 0; font-size: 12px; }
+  .ms-combo.open .ms-caret { transform: rotate(180deg); }
+  .ms-panel { display: none; margin-top: 6px; border: 2px solid #ece7ff; border-radius: 12px; background: #fbfaff; overflow: hidden; }
+  .ms-combo.open .ms-panel { display: block; animation: fadeUp .22s var(--ease); }
+  .ms-search-wrap { position: relative; display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #ece7ff; }
+  .ms-search-wrap > svg { position: absolute; left: 17px; width: 15px; height: 15px; color: #9b8fd6; pointer-events: none; }
+  .ms-panel .ms-search { width: 100%; margin: 0; padding: 8px 10px 8px 32px; font-size: 13px; border-color: #ded4ff; }
+  .ms-panel .ms-search:focus { border-color: var(--violet); box-shadow: 0 0 0 4px rgba(123,92,255,.14); }
+  .ms-options { max-height: 186px; overflow-y: auto; padding: 6px; }
+  .ms-option { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; background: transparent; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: left; color: var(--kiber-dark); margin: 0 0 2px; }
+  .ms-option:hover, .ms-option.is-active { background: #efeaff; color: var(--violet-deep); }
+  .ms-option.is-selected { background: linear-gradient(135deg, #9b7dff, #6a45f0); color: #fff; }
+  .ms-option .ms-hours { font-size: 10px; font-weight: 800; opacity: .85; white-space: nowrap; }
+  .ms-empty { padding: 14px; text-align: center; color: #8a9492; font-weight: 700; font-size: 12px; }
+  .plan-row-fields { display: flex; align-items: flex-end; gap: 6px; width: 100%; flex-wrap: wrap; }
+  .plan-row-fields .fld { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #8a9492; letter-spacing: .3px; }
+  .plan-row-fields .fld input { margin: 0; padding: 6px 8px; font-size: 13px; }
+  .plan-row-fields .fld-num input { width: 80px; }
+  .plan-row-fields .fld-date input { width: 148px; }
+  .auto-end { display: flex; align-items: center; gap: 6px; background: #f6f3ff; border: 2px dashed #d9cdff; border-radius: 10px; padding: 6px 10px; min-width: 148px; height: 34px; }
+  .auto-end.recalc { animation: autoPulse .7s var(--ease); }
+  .auto-end .plan-end-date { font-size: 13px; font-weight: 800; color: var(--violet-deep); font-variant-numeric: tabular-nums; }
+  .auto-end .plan-end-wd { font-size: 10px; font-weight: 800; color: #9b8fd6; text-transform: uppercase; }
+  .plan-row-btns { display: flex; gap: 4px; margin-left: auto; }
+  .plan-hint { font-size: 11px; font-weight: 700; color: #9aa5a3; margin: 2px 0 8px; line-height: 1.5; }
+  .plan-summary { margin-top: 8px; background: linear-gradient(135deg, #f2ecff, #eaf6ff); border: 1px solid #d9cdff; border-radius: 12px; padding: 10px 12px; font-size: 12px; font-weight: 800; color: var(--violet-deep); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; animation: fadeUp .3s var(--ease); }
+  .plan-summary .ps-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--violet); }
+  .plan-summary.is-camp { background: linear-gradient(135deg, #fff3d9, #ffe9c7); border-color: #ffd98a; color: #a06a00; }
+  .plan-summary.is-camp .ps-dot { background: var(--amber); }
+
+  #screen-student-profile, #screen-group-profile { background: var(--kiber-white); padding: 25px; border-radius: 20px; box-shadow: var(--shadow-3); margin-bottom: 20px; }
+  .profile-back-btn { background: var(--kiber-teal); color: #fff; padding: 10px 20px; border-radius: 30px; font-size: 15px; margin-bottom: 20px; display: inline-block; }
+  .profile-back-btn:hover { background: #009e90; transform: translateY(-1px); }
+  .profile-back-btn .arrow { display: inline-block; transition: transform .2s var(--ease); }
+  .profile-back-btn:hover .arrow { transform: translateX(-4px); }
+  .profile-header { display: flex; align-items: center; gap: 18px; margin-bottom: 25px; flex-wrap: wrap; }
+  .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--kiber-yellow); color: var(--kiber-dark); font-weight: 900; font-size: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 6px 16px rgba(255,210,0,.45); position: relative; }
+  .profile-avatar::after { content: ''; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid rgba(0,196,179,.55); animation: ringPulse 2.6s ease-out infinite; }
+  .profile-name { font-size: 24px; font-weight: 800; color: var(--kiber-dark); margin: 0; }
+  .profile-status { display: inline-block; margin-top: 6px; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .status-active { background: #e6f9f8; color: #00857a; }
+  .status-inactive { background: #ffe5e5; color: var(--kiber-red); }
+  .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 25px; }
+  .profile-card { background: #f9fbfa; border-radius: 14px; padding: 18px; border-left: 4px solid var(--kiber-teal); transition: transform .2s var(--ease), box-shadow .2s; }
+  .profile-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); }
+  .profile-card .label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 6px; }
+  .profile-card .value { font-size: 16px; font-weight: 700; color: var(--kiber-dark); }
+  .profile-modules-title { font-size: 17px; font-weight: 800; margin-bottom: 12px; }
+  .profile-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+  .profile-actions button { padding: 10px 22px; border-radius: 30px; font-size: 15px; }
+  .profile-anim .profile-avatar { animation: avatarIn .55s var(--spring) backwards; }
+  .profile-anim .profile-card { animation: fadeUp .5s var(--ease) backwards; }
+  .profile-anim .profile-card:nth-child(1) { animation-delay: .06s; }
+  .profile-anim .profile-card:nth-child(2) { animation-delay: .12s; }
+  .profile-anim .profile-card:nth-child(3) { animation-delay: .18s; }
+  .profile-anim .profile-card:nth-child(4) { animation-delay: .24s; }
+  .profile-anim .profile-card:nth-child(5) { animation-delay: .3s; }
+  .profile-anim .history-card, .profile-anim .plan-row, .profile-anim .group-student-link { animation: fadeUp .45s var(--ease) backwards; }
+  .profile-anim .history-card:nth-child(2), .profile-anim .plan-row:nth-child(2), .profile-anim .group-student-link:nth-child(2) { animation-delay: .07s; }
+  .profile-anim .history-card:nth-child(3), .profile-anim .plan-row:nth-child(3), .profile-anim .group-student-link:nth-child(3) { animation-delay: .14s; }
+  .profile-anim .plan-row:nth-child(4), .profile-anim .group-student-link:nth-child(4) { animation-delay: .21s; }
+  .profile-anim .group-student-link:nth-child(5) { animation-delay: .26s; }
+  .profile-anim .group-student-link:nth-child(6) { animation-delay: .31s; }
+  .profile-anim .tag-badge { animation: popIn .35s .2s var(--spring) backwards; }
+
+  .group-lessons-box { background: #f9fbfa; border-radius: 14px; padding: 20px; border-left: 4px solid var(--kiber-yellow); margin-bottom: 25px; }
+  .group-lessons-box .label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 10px; }
+  .plan-row { padding: 10px; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 5px; }
+  .plan-chip { font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 12px; white-space: nowrap; }
+  .chip-teal { background: #e6f9f8; color: #00857a; }
+  .chip-green { background: #e4f5ea; color: var(--kiber-green); }
+  .chip-blue { background: #e8f0ff; color: var(--kiber-blue); }
+  .chip-gray { background: #eef1f0; color: #8a9492; }
+  .group-student-link { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f9fbfa; border-radius: 10px; margin-bottom: 8px; cursor: pointer; font-weight: 600; transition: background .2s, transform .2s var(--ease); }
+  .group-student-link:hover { background: #e6f9f8; transform: translateX(5px); }
+  .history-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 15px; margin-bottom: 15px; border-left: 4px solid var(--kiber-blue); transition: transform .2s var(--ease), box-shadow .2s; }
+  .history-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+  .history-card h4 { margin: 0 0 10px; font-size: 16px; }
+  .history-stats { display: flex; gap: 15px; font-size: 14px; color: #555; flex-wrap: wrap; }
+  .history-stats span { font-weight: 700; }
+  .history-stats .missed { color: var(--kiber-red); }
+  .history-bar { height: 8px; background: #eef4f3; border-radius: 8px; margin-top: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 8px; width: 0; background: linear-gradient(90deg, var(--kiber-teal), var(--kiber-green)); transition: width .9s var(--ease); }
+
+  .attendance-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 15px; }
+  .attendance-controls > div { display: flex; flex-direction: column; gap: 4px; }
+  .attendance-controls label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #888; letter-spacing: .4px; }
+  .attendance-controls input { margin: 0; width: 190px; }
+  .att-nav { width: 40px; height: 40px; border-radius: 12px; background: #e6f9f8; color: var(--teal-deep); font-size: 16px; font-weight: 900; margin: 0; }
+  .att-nav:hover { background: var(--kiber-teal); color: #fff; transform: translateY(-2px); }
+  .att-month-label { font-weight: 800; color: var(--teal-deep); font-size: 15px; text-transform: capitalize; align-self: center; }
+  .att-period-banner { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: linear-gradient(135deg, #fff3d9, #ffe9c7); border: 1px solid #ffd98a; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 800; color: #a06a00; animation: fadeUp .35s var(--ease); }
+  .att-period-banner b { font-variant-numeric: tabular-nums; }
+  .att-saved-hint { opacity: 0; transform: translateY(5px); transition: all .25s var(--ease); color: var(--kiber-green); font-weight: 800; font-size: 13px; align-self: center; }
+  .att-saved-hint.show { opacity: 1; transform: none; }
+  .attendance-table-wrapper { overflow-x: auto; border: 1px solid #ccc; border-radius: 8px; background: #fff; }
+  .attendance-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+  .attendance-table th, .attendance-table td { border: 1px solid #aaa; padding: 4px; height: 36px; min-width: 52px; }
+  .attendance-table th { background: #e6f9f8; color: var(--teal-deep); font-weight: 900; border-bottom: 2px solid var(--kiber-teal); }
+  .attendance-table th.att-weekend, .attendance-table td.att-weekend { background: #fff8ea; }
+  .attendance-table th .att-d { font-size: 14px; line-height: 1.1; }
+  .attendance-table th .att-wd { font-size: 9px; font-weight: 800; color: #7d918e; text-transform: uppercase; }
+  .attendance-table th .att-mo { font-size: 9px; font-weight: 900; color: var(--amber); text-transform: uppercase; }
+  .attendance-table tr.att-mod-row th { background: #f6f3ff; border-bottom: 3px solid var(--violet); height: 24px; padding: 2px; }
+  .att-mod-num { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; border-radius: 6px; background: var(--violet); color: #fff; font-size: 10px; font-weight: 900; }
+  .att-mod-none { color: #c3bcd8; font-weight: 900; }
+  .att-anim .attendance-table tbody tr { animation: fadeUp .35s var(--ease) backwards; }
+  .att-anim .attendance-table tbody tr:nth-child(2) { animation-delay: .05s; }
+  .att-anim .attendance-table tbody tr:nth-child(3) { animation-delay: .1s; }
+  .att-anim .attendance-table tbody tr:nth-child(4) { animation-delay: .15s; }
+  .att-anim .attendance-table tbody tr:nth-child(5) { animation-delay: .2s; }
+  .att-anim .attendance-table tbody tr:nth-child(6) { animation-delay: .25s; }
+  .attendance-table .student-name-cell { text-align: left; padding-left: 10px; font-weight: 600; min-width: 180px; background: #f9f9f9; position: sticky; left: 0; z-index: 10; border-right: 2px solid #999; }
+  .attendance-table tr.att-mod-row th.student-name-cell { background: #f2ecff; color: var(--violet-deep); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+  .attendance-table .cell-input { width: 100%; height: 100%; border: none; background: transparent; text-align: center; font-size: 16px; font-weight: 800; text-transform: uppercase; outline: none; margin: 0; padding: 0; color: var(--kiber-dark); border-radius: 6px; transition: background .2s, color .2s; }
+  .attendance-table .cell-input:focus { background-color: #e6f9f8; box-shadow: inset 0 0 0 2px var(--kiber-teal); }
+  .cell-input.mark-plus { color: #1d7a43; background: rgba(46,158,91,.13); }
+  .cell-input.mark-n { color: var(--kiber-red); background: rgba(177,38,40,.1); }
+  .cell-input.mark-b { color: #b06a00; background: rgba(224,138,0,.13); }
+  .cell-input.mark-o { color: var(--kiber-blue); background: rgba(47,123,255,.1); }
+  .cell-input.flash { animation: cellPop .35s var(--spring); }
+  .att-total-row td { background: #e6f9f8; font-weight: 900; color: var(--teal-deep); }
+  .att-mod-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .att-mod-legend span { display: inline-flex; align-items: center; gap: 6px; background: #f6f3ff; border: 1px solid #e0d6ff; color: var(--violet-deep); font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 10px; }
+  .attendance-legend { display: flex; gap: 15px; margin-top: 10px; font-size: 13px; font-weight: 600; color: #555; flex-wrap: wrap; }
+  .legend-mark { font-weight: 900; font-size: 16px; margin-right: 4px; vertical-align: middle; display: inline-block; }
+  .legend-mark.plus { color: var(--kiber-green); }
+  .legend-mark.n { color: var(--kiber-red); }
+  .legend-mark.b { color: var(--amber); }
+  .legend-mark.o { color: var(--kiber-blue); }
+
+  .empty-state { background: var(--kiber-white); border-radius: 20px; padding: 40px 25px; text-align: center; box-shadow: var(--shadow-1); color: #888; font-weight: 600; animation: fadeUp .4s var(--ease); }
+  .empty-state svg { width: 54px; height: 54px; color: var(--kiber-teal); animation: bounceSoft 2.4s ease-in-out infinite; }
+  .empty-state.camp-empty svg { color: var(--amber-bright); }
+  .empty-title { font-weight: 800; font-size: 17px; color: var(--kiber-dark); margin-top: 12px; }
+  .empty-hint { font-size: 13px; margin-top: 6px; }
+  .skeleton-item { height: 64px; border-radius: 15px; margin-bottom: 15px; background: linear-gradient(90deg, #eef4f3 25%, #fff 50%, #eef4f3 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; box-shadow: var(--shadow-1); }
+
+  #loadbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1200; opacity: 0; transition: opacity .2s; pointer-events: none; overflow: hidden; }
+  #loadbar.on { opacity: 1; }
+  .loadbar-inner { height: 100%; width: 38%; border-radius: 3px; background: linear-gradient(90deg, var(--kiber-yellow), var(--kiber-teal), var(--electric)); animation: loadSlide 1.1s var(--ease) infinite; }
+
+  #toasts { position: fixed; right: 18px; bottom: 18px; z-index: 1300; display: flex; flex-direction: column; gap: 10px; max-width: min(380px, calc(100vw - 36px)); }
+  .toast { --tcolor: var(--kiber-teal); background: #fff; border-left: 4px solid var(--tcolor); border-radius: 14px; box-shadow: var(--shadow-3); padding: 12px 14px; display: flex; align-items: center; gap: 10px; position: relative; overflow: hidden; animation: toastIn .4s var(--spring); font-size: 14px; font-weight: 600; }
+  .toast.out { animation: toastOut .25s var(--ease) forwards; }
+  .toast-success { --tcolor: var(--kiber-green); }
+  .toast-error { --tcolor: var(--danger); }
+  .toast-info { --tcolor: var(--electric); }
+  .toast-warn { --tcolor: var(--amber); }
+  .toast-icon { color: var(--tcolor); flex-shrink: 0; display: flex; }
+  .toast-icon svg { width: 20px; height: 20px; }
+  .toast-msg { flex: 1; line-height: 1.35; }
+  .toast-action { background: #e6f9f8; color: var(--teal-deep); padding: 6px 12px; border-radius: 8px; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+  .toast-action:hover { background: var(--kiber-teal); color: #fff; }
+  .toast-close { background: transparent; color: #9aa5a3; padding: 4px 6px; font-size: 13px; flex-shrink: 0; }
+  .toast-close:hover { color: var(--kiber-red); }
+  .toast-progress { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--tcolor); animation: toastProgress linear forwards; }
+  .toast:hover .toast-progress { animation-play-state: paused; }
+
+  @media (max-width: 640px) {
+    body { padding: 12px; }
+    .app-header { top: 6px; padding: 12px 14px; }
+    .section, .search-box { padding: 15px; }
+    .modal { padding: 18px; width: 96%; }
+    #screen-student-profile, #screen-group-profile { padding: 16px; }
+    .attendance-controls input { width: 150px; }
+    .profile-name { font-size: 20px; }
+    #toasts { right: 12px; left: 12px; max-width: none; }
+    .tab-btn { padding: 9px 14px; font-size: 13px; }
+    .plan-row-fields .fld-date input, .auto-end { width: 100%; min-width: 0; }
+    .plan-row-fields .fld { flex: 1 1 130px; }
+    .plan-row-btns { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    .blob, .glyph { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-scene" aria-hidden="true">
+  <div class="blob blob-a"></div><div class="blob blob-b"></div><div class="blob blob-c"></div>
+  <span class="glyph" style="top:12%; left:6%;  --s:52px; --d:13s;">&lt;/&gt;</span>
+  <span class="glyph" style="top:24%; right:8%; --s:44px; --d:17s;">{ }</span>
+  <span class="glyph" style="top:64%; left:4%;  --s:38px; --d:11s;">01</span>
+  <span class="glyph" style="top:78%; right:12%;--s:34px; --d:15s;">▲</span>
+  <span class="glyph" style="top:44%; left:46%; --s:26px; --d:19s;">✦</span>
+  <span class="glyph" style="top:88%; left:38%; --s:30px; --d:14s;">●</span>
+  <span class="glyph" style="top:6%;  left:58%; --s:30px; --d:16s;">10</span>
+  <div class="grain"></div>
+</div>
+
+<div id="loadbar" aria-hidden="true"><div class="loadbar-inner"></div></div>
+
+<div class="container">
+  <div id="login-screen" class="login-enter">
+    <div class="welcome-title">
+      <span>Добро пожаловать в</span>
+      <img src="https://kiber-one.by/favicon.ico" alt="KIBERone" class="welcome-logo"
+           onerror="this.style.display='none'; var f=this.nextElementSibling; if(f) f.style.display='inline-block';">
+      <span class="welcome-logo-fallback">KIBERone</span><span>!</span>
+    </div>
+    <div>
+      <label>Email: <input type="email" id="login-email" placeholder="admin@bel.com" maxlength="100"></label>
+      <label>Пароль: <input type="password" id="login-password" maxlength="100"></label>
+      <button id="login-btn" class="btn-save" onclick="login(this)">Войти</button>
+    </div>
+    <p id="login-error" class="error"></p>
+  </div>
+
+  <div id="app-screen" class="hidden">
+    <div class="app-header" id="app-header">
+      <p><span id="user-info"></span><span id="conn-badge" class="conn-badge">Supabase</span></p>
+      <button onclick="logout()">Выйти</button>
+    </div>
+    <div class="tabs" id="main-tabs">
+      <button class="tab-btn active" data-tab="students" onclick="switchTab('students')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Ученики</button>
+      <button class="tab-btn" data-tab="groups" onclick="switchTab('groups')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Группы</button>
+      <button class="tab-btn" data-tab="tutors" onclick="switchTab('tutors')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+        Тьюторы</button>
+      <button class="tab-btn" data-tab="modules" onclick="switchTab('modules')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 3-3 3-3-3 3-3z"/><path d="M5 9l3 3-3 3-3-3 3-3z"/><path d="M19 9l3 3-3 3-3-3 3-3z"/><path d="M12 16l3 3-3 3-3-3 3-3z"/></svg>
+        Модули</button>
+    </div>
+
+    <div id="screen-students" class="screen active" style="display:block;">
+      <h2>Ученики</h2>
+      <div class="section">
+        <input id="s-name" class="rus-only" placeholder="ФИО (рус. буквы)" maxlength="100">
+        <input id="s-age" type="number" placeholder="Возраст (5-16)" min="5" max="16" onkeypress="return isNumberKey(event)">
+        <select id="s-group"></select>
+        <input id="s-date" type="date">
+        <select id="s-active"><option value="true">Активен</option><option value="false">Неактивен</option></select>
+        <button class="add-btn" onclick="addStudent(this)">Добавить</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-student" placeholder="Умный поиск (ФИО, возраст, группа...)" oninput="renderStudents()" style="width:100%; margin:0;" maxlength="100">
+      </div>
+      <div id="students-stats" class="students-stats"></div>
+      <div id="students-list"></div>
+    </div>
+
+    <div id="screen-student-profile" class="screen" style="display:none;">
+      <button class="profile-back-btn" onclick="closeStudentProfile()"><span class="arrow">←</span> Назад к ученикам</button>
+      <div id="student-profile-content"></div>
+    </div>
+
+    <div id="screen-groups" class="screen" style="display:none;">
+      <h2>Группы</h2>
+      <div class="section" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <button class="add-btn" onclick="openGroupModal()">+ Создать новую группу</button>
+        <button class="btn-camp" onclick="openGroupModal(null, true)">🏖 Добавить кибер каникулы</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-group" placeholder="Поиск: название, тьютор, день недели, время, каникулы…" oninput="renderGroups()" style="width:100%; margin:0;" maxlength="100">
+      </div>
+      <div id="groups-list"></div>
+      <h2 class="camps-title">🏖 Кибер каникулы</h2>
+      <div id="camps-list"></div>
+    </div>
+
+    <div id="screen-group-profile" class="screen" style="display:none;">
+      <button class="profile-back-btn" onclick="closeGroupProfile()"><span class="arrow">←</span> Назад к группам</button>
+      <div id="group-profile-content"></div>
+    </div>
+
+    <div id="screen-tutors" class="screen" style="display:none;">
+      <h2>Тьюторы</h2>
+      <div class="section">
+        <input id="t-name" class="rus-only" placeholder="ФИО (рус. буквы)" maxlength="100">
+        <input id="t-spec" class="rus-only" placeholder="Специализация" maxlength="100">
+        <button class="add-btn" onclick="addTutor(this)">Добавить</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-tutor" placeholder="Умный поиск (ФИО, специализация...)" oninput="renderTutors()" style="width:100%; margin:0;" maxlength="100">
+      </div>
+      <div id="tutors-list"></div>
+    </div>
+
+    <div id="screen-modules" class="screen" style="display:none;">
+      <h2>Модули</h2>
+      <div class="section">
+        <input id="m-title" placeholder="Название" maxlength="100">
+        <button class="add-btn" onclick="addModule(this)">Добавить</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-module" placeholder="Умный поиск (название...)" oninput="renderModules()" style="width:100%; margin:0;" maxlength="100">
+      </div>
+      <div id="modules-list"></div>
+    </div>
+  </div>
+</div>
+
+<div id="group-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Создать группу</h3>
+    <div id="modal-camp-note" class="camp-note" style="display:none;">🏖 Кибер каникулы: занятия идут <b>каждый день</b> — от первой даты до последней, без выходных.</div>
+    <input type="hidden" id="modal-group-id">
+    <label>Название:</label>
+    <input type="text" id="modal-g-name" placeholder="Например: A-101 или Каникулы Июнь" maxlength="100">
+    <label>Уровень (1-4):</label>
+    <select id="modal-g-level"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+    <div id="modal-day-field">
+      <label>День недели:</label>
+      <select id="modal-g-day" onchange="onGroupDayChange()">
+        <option value="Понедельник">Понедельник</option><option value="Вторник">Вторник</option>
+        <option value="Среда">Среда</option><option value="Четверг">Четверг</option>
+        <option value="Пятница">Пятница</option><option value="Суббота">Суббота</option>
+        <option value="Воскресенье">Воскресенье</option>
+      </select>
+    </div>
+    <div id="modal-daily-note" class="camp-note" style="display:none; margin-top:15px;">📅 Режим: <b>ежедневно</b>. Период считается по дате начала и количеству занятий.</div>
+    <label>Время (с - до):</label>
+    <div style="display:flex; gap:10px; align-items:center; margin-top:5px;">
+      <input type="time" id="modal-g-start" style="width:50%; margin:0;">
+      <span>—</span>
+      <input type="time" id="modal-g-end" style="width:50%; margin:0;">
+    </div>
+    <label>Тьютор:</label>
+    <select id="modal-g-tutor"></select>
+
+    <label style="margin-top:20px; border-top:1px solid #ddd; padding-top:10px;">План модулей (по порядку):</label>
+    <div class="plan-hint" id="plan-hint">Укажите <b>дату начала</b> и <b>количество занятий</b> — дата окончания посчитается автоматически, а следующий модуль начнётся сразу после предыдущего.</div>
+    <div id="modal-g-modules-plan"></div>
+    <div id="plan-summary" class="plan-summary" style="display:none;"></div>
+    <button class="btn-cancel" style="padding:8px 15px; font-size:13px; background:#efeaff; color:var(--violet-deep); margin-top:10px;" onclick="addModulePlanRow()">+ Добавить модуль в план</button>
+
+    <label>Ученики в группе:</label>
+    <div class="picker">
+      <div class="picker-toolbar">
+        <div class="picker-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+          <input type="search" id="modal-student-search" class="picker-search" autocomplete="off" maxlength="60"
+                 placeholder="Поиск ученика: имя, возраст, группа…"
+                 oninput="filterModalStudents()"
+                 onkeydown="if(event.key==='Escape'){event.stopPropagation();clearStudentSearch();}">
+          <button type="button" class="picker-clear" id="student-search-clear" onclick="clearStudentSearch()" aria-label="Очистить поиск">✕</button>
+        </div>
+        <div class="picker-actions">
+          <button type="button" class="mini-btn" onclick="selectFoundStudents()">Выбрать найденных</button>
+          <button type="button" class="mini-btn" onclick="clearAllStudents()">Снять всё</button>
+          <button type="button" class="mini-btn picker-toggle" id="only-selected-btn" onclick="toggleOnlySelected()">Только выбранные</button>
+        </div>
+      </div>
+      <div class="picker-meta" id="student-picker-meta"></div>
+      <div id="modal-g-students" class="student-checkbox-list"></div>
+      <div class="picker-empty" id="student-picker-empty">Никого не найдено<span>Измените запрос или отключите «Только выбранные»</span></div>
+    </div>
+
+    <div id="modal-error" class="error"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeGroupModal()">Отмена</button>
+      <button class="btn-save" onclick="saveGroup(this)">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div id="edit-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 id="edit-modal-title">Редактировать</h3>
+    <div id="edit-modal-content"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Отмена</button>
+      <button class="btn-save" onclick="saveEdit(this)">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="confirm-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <h3 id="confirm-title">Подтвердите действие</h3>
+    <p id="confirm-message"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="confirm-cancel" onclick="resolveConfirm(false)">Отмена</button>
+      <button class="btn-danger" onclick="resolveConfirm(true)">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+/* ================= КОНФИГ SUPABASE ================= */
+const SUPABASE_URL = "https://ygwmjutbeotjlotuhihi.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnd21qdXRiZW90amxvdHVoaWhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5MjAwNDksImV4cCI6MjExMDQ5NjA0OX0.kySn4rkFYMTUWiNXJIh_QGotHvM-uCWYcYZIKhjoTm8";
+const supabaseClient = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+function db(){ return supabaseClient; }
+
+let currentUser = null;
+let allTutors = [], allGroups = [], allStudents = [], allModules = [], allModuleStudents = [];
+let currentEditType = null, currentEditId = null;
+let currentProfileStudentId = null, currentProfileGroupId = null;
+let currentAttDate = new Date();
+let currentGroupModulesPlan = [];
+let modalIsCamp = false, onlySelectedStudents = false;
+let confirmResolver = null, loadCount = 0;
+
+const dayMap = { "Понедельник":1, "Вторник":2, "Среда":3, "Четверг":4, "Пятница":5, "Суббота":6, "Воскресенье":0 };
+const WD_SHORT = ['вс','пн','вт','ср','чт','пт','сб'];
+const MO_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const levelColors = { 1:'#00c4b3', 2:'#2f7bff', 3:'#7b5cff', 4:'#e08a00' };
+const MAX_LESSONS = 400, MAX_CAMP_DAYS = 120;
+const SEARCH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>';
+
+/* ================= УТИЛИТЫ ================= */
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+function lsKeys(){ try { return Object.keys(localStorage); } catch(e){ return []; } }
+function readJSON(key, fb){ try { const v = lsGet(key); return v ? JSON.parse(v) : fb; } catch(e){ return fb; } }
+function fmtDateInput(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function fmtRu(d){ return d ? String(d.getDate()).padStart(2,'0') + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + d.getFullYear() : '—'; }
+function parseLocalDate(s){ if(!s) return null; const p = String(s).split('-').map(Number); if(p.length<3||!p[0]) return null; return new Date(p[0], p[1]-1, p[2]); }
+function fmtTime(t){ if(!t) return ''; const m = String(t).match(/^(\d{1,2}):(\d{2})/); return m ? m[1].padStart(2,'0') + ':' + m[2] : String(t); }
+function timeRange(g){ const a = fmtTime(g.time_start), b = fmtTime(g.time_end); if(!a && !b) return ''; return (a || '—') + '–' + (b || '—'); }
+function withTimeout(p,ms){ return Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]); }
+function getAttKey(gid, sid){ return 'att_' + gid + '_' + sid; }
+function getModulesPlanKey(gid){ return 'plan_' + gid; }
+function attKeysForStudent(id){ return lsKeys().filter(k => k.startsWith('att_') && k.endsWith('_' + id)); }
+function campKey(id){ return 'camp_' + id; }
+function isCamp(id){ return lsGet(campKey(id)) === '1'; }
+function setCamp(id, v){ if (v) lsSet(campKey(id), '1'); else lsDel(campKey(id)); }
+function getGroupModulesPlan(gid){ return readJSON(getModulesPlanKey(gid), []); }
+
+/* ================= РАСЧЁТ ПЕРИОДА =================
+   Обычная группа: 1 занятие в неделю в день недели группы.
+   Кибер каникулы: занятия КАЖДЫЙ день от первой даты до последней. */
+function snapToWeekday(d, wd){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  if (wd === undefined || wd === null) return x;
+  let guard = 0;
+  while (x.getDay() !== wd && guard++ < 14) x.setDate(x.getDate() + 1);
+  return x;
+}
+function lessonDatesFrom(start, count, camp, wd){
+  const out = [];
+  const n = Math.max(1, Math.min(MAX_LESSONS, parseInt(count, 10) || 1));
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  if (camp) {
+    for (let i = 0; i < n; i++){ out.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+  } else {
+    const w = (wd === undefined || wd === null) ? cur.getDay() : wd;
+    let guard = 0;
+    while (cur.getDay() !== w && guard++ < 14) cur.setDate(cur.getDate() + 1);
+    for (let i = 0; i < n; i++){ out.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
+  }
+  return out;
+}
+function nextLessonAfter(end, camp){
+  const d = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  d.setDate(d.getDate() + (camp ? 1 : 7));
+  return d;
+}
+function computeRowDates(startDate, lessons, camp, wd){
+  const s = parseLocalDate(startDate);
+  const n = parseInt(lessons, 10);
+  if (!s || !n || n < 1) return { start:null, end:null, dates:[] };
+  const dates = lessonDatesFrom(s, n, camp, wd);
+  return { start: dates[0], end: dates[dates.length-1], dates };
+}
+function groupPlanDates(g){
+  const camp = isCamp(g.id);
+  const wd = dayMap[g.day_of_week];
+  return getGroupModulesPlan(g.id).map((p, i) => {
+    const c = computeRowDates(p.startDate, p.lessons, camp, wd);
+    return { ...p, index:i, mod: allModules.find(m => m.id === p.moduleId), _start:c.start, _end:c.end, _dates:c.dates };
+  });
+}
+function planSpan(rows){
+  const valid = rows.filter(r => r._start && r._end);
+  if (!valid.length) return null;
+  let s = valid[0]._start, e = valid[0]._end;
+  valid.forEach(r => { if (r._start < s) s = r._start; if (r._end > e) e = r._end; });
+  return { start:s, end:e };
+}
+function dailyRange(s, e, cap){
+  const out = []; const cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+  let guard = 0;
+  while (cur <= e && guard++ < (cap || MAX_CAMP_DAYS)){ out.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+  return out;
+}
+function moduleIndexAt(rows, date, camp, wd){
+  for (const r of rows){
+    if (!r._start || !r._end) continue;
+    if (date >= r._start && date <= r._end){
+      if (camp) return r.index + 1;
+      const w = (wd === undefined) ? r._start.getDay() : wd;
+      if (date.getDay() === w) return r.index + 1;
+    }
+  }
+  return null;
+}
+function planStatus(item){
+  const t = new Date(); t.setHours(0,0,0,0);
+  const s = item._start || parseLocalDate(item.startDate), e = item._end || parseLocalDate(item.endDate);
+  if (!s || !e) return { txt:'Без дат', cls:'chip-gray' };
+  if (t > e) return { txt:'Завершён', cls:'chip-green' };
+  if (t >= s) return { txt:'Идёт сейчас', cls:'chip-teal' };
+  return { txt:'Впереди', cls:'chip-blue' };
+}
+
+/* ================= UI ================= */
+function startLoad(){ loadCount++; document.getElementById('loadbar').classList.add('on'); }
+function endLoad(){ loadCount = Math.max(0, loadCount-1); if (!loadCount) document.getElementById('loadbar').classList.remove('on'); }
+async function withBusy(btn, fn){
+  if (btn && btn.dataset.busy) return;
+  if (btn){ btn.dataset.busy='1'; btn.classList.add('busy'); btn.disabled = true; }
+  try { return await fn(); }
+  finally { if (btn){ delete btn.dataset.busy; btn.classList.remove('busy'); btn.disabled = false; } }
+}
+const TOAST_ICONS = {
+  success:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  error:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+};
+function toast(msg, type, opts){
+  type = type || 'success'; opts = opts || {};
+  const wrap = document.getElementById('toasts');
+  while (wrap.children.length >= 4) wrap.firstChild.remove();
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.innerHTML = '<span class="toast-icon">' + (TOAST_ICONS[type] || TOAST_ICONS.info) + '</span>' +
+    '<div class="toast-msg">' + esc(msg) + '</div>' +
+    (opts.action ? '<button class="toast-action">' + esc(opts.action) + '</button>' : '') +
+    '<button class="toast-close" aria-label="Закрыть">✕</button>' +
+    '<span class="toast-progress" style="animation-duration:' + (opts.duration || 4200) + 'ms"></span>';
+  const dismiss = () => { if (el.dataset.out) return; el.dataset.out='1'; el.classList.add('out'); setTimeout(()=>el.remove(), 260); };
+  el.querySelector('.toast-close').addEventListener('click', dismiss);
+  if (opts.action) el.querySelector('.toast-action').addEventListener('click', () => { if (opts.onAction) opts.onAction(); dismiss(); });
+  el.querySelector('.toast-progress').addEventListener('animationend', dismiss);
+  wrap.appendChild(el);
+}
+function openModalEl(el){
+  el.classList.add('active');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('show')));
+  document.body.classList.add('modal-open');
+}
+function closeModalEl(el){
+  el.classList.remove('show');
+  setTimeout(()=>{ el.classList.remove('active'); if (!document.querySelector('.modal-overlay.active')) document.body.classList.remove('modal-open'); }, 230);
+}
+function askConfirm(message, title){
+  return new Promise(res => {
+    confirmResolver = res;
+    document.getElementById('confirm-title').textContent = title || 'Подтвердите действие';
+    document.getElementById('confirm-message').textContent = message;
+    openModalEl(document.getElementById('confirm-modal'));
+    setTimeout(()=>{ const b=document.getElementById('confirm-cancel'); if(b) b.focus(); }, 100);
+  });
+}
+function resolveConfirm(v){ const r = confirmResolver; confirmResolver = null; closeModalEl(document.getElementById('confirm-modal')); if (r) r(v); }
+function animateRemoveByKey(key){
+  return new Promise(res => {
+    const el = document.querySelector('[data-key="' + key + '"]');
+    if (!el) return res();
+    el.style.maxHeight = el.scrollHeight + 'px';
+    el.classList.add('removing');
+    setTimeout(res, 300);
+  });
+}
+function flashItem(key){
+  const el = document.querySelector('[data-key="' + key + '"]');
+  if (!el) return;
+  el.classList.add('just-added');
+  setTimeout(()=>el.classList.remove('just-added'), 1600);
+  el.scrollIntoView({ block:'nearest', behavior:'smooth' });
+}
+function runCounters(root, animate){
+  root.querySelectorAll('[data-count]').forEach(el => {
+    const target = parseInt(el.dataset.count, 10) || 0, suf = el.dataset.suffix || '';
+    if (!animate){ el.textContent = target + suf; return; }
+    const t0 = performance.now(), dur = 650;
+    (function tick(t){ const p = Math.min(1,(t-t0)/dur), e = 1-Math.pow(1-p,3); el.textContent = Math.round(target*e)+suf; if (p<1) requestAnimationFrame(tick); })(t0);
+  });
+}
+function animateBars(root, animate){
+  root.querySelectorAll('[data-bar]').forEach(el => {
+    const w = Math.max(0, Math.min(100, parseFloat(el.dataset.bar) || 0));
+    if (!animate){ el.style.transition='none'; el.style.width = w+'%'; return; }
+    el.style.width = '0%';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.width = w+'%'; }));
+  });
+}
+function emptyState(title, hint, camp){
+  return '<div class="empty-state' + (camp ? ' camp-empty' : '') + '">' + SEARCH_SVG +
+    '<div class="empty-title">' + esc(title) + '</div><div class="empty-hint">' + esc(hint) + '</div></div>';
+}
+function renderSkeletons(){
+  const sk = '<div class="skeleton-item"></div>'.repeat(3);
+  ['students-list','groups-list','camps-list','tutors-list','modules-list'].forEach(id => { const e=document.getElementById(id); if(e) e.innerHTML = sk; });
+  document.getElementById('students-stats').innerHTML = '';
+}
+
+/* ================= ТЕГИ ================= */
+function getAutoTags(item, type) {
+  const tags = [];
+  if (type === 'student') {
+    if (item.age) tags.push(item.age + ' лет');
+    const grp = allGroups.find(g => g.id === item.group_id);
+    if (grp) tags.push('Гр: ' + grp.name);
+    tags.push(item.active ? 'Активен' : 'Неактивен');
+  } else if (type === 'group') {
+    if (item.level) tags.push('Ур. ' + item.level);
+    if (isCamp(item.id)) tags.push('📅 Ежедневно');
+    else if (item.day_of_week) tags.push(item.day_of_week);
+    const tr = timeRange(item);
+    if (tr) tags.push('🕒 ' + tr);
+    const tut = allTutors.find(t => t.id === item.tutor_id);
+    if (tut) tags.push('Тьютор: ' + tut.full_name);
+    const rows = groupPlanDates(item), sp = planSpan(rows);
+    if (sp) tags.push('◓ ' + fmtRu(sp.start) + ' → ' + fmtRu(sp.end));
+  } else if (type === 'tutor') {
+    if (item.specialization) tags.push(item.specialization);
+  } else if (type === 'module') {
+    tags.push('Модуль');
+    if (item.hours) tags.push(item.hours + ' ч');
+  }
+  return tags;
+}
+function renderAutoTagsHtml(item, type) {
+  return getAutoTags(item, type).map(t => {
+    let cls = 'tag-badge';
+    if (t.indexOf('🕒') === 0) cls += ' time-badge';
+    else if (t.indexOf('📅') === 0) cls += ' daily-badge';
+    else if (t.indexOf('◓') === 0) cls += ' span-badge';
+    return '<span class="' + cls + '">' + esc(t) + '</span>';
+  }).join('');
+}
+function isNumberKey(evt){ const c = evt.which ? evt.which : evt.keyCode; return !(c > 31 && (c < 48 || c > 57)); }
+function applyRusOnly(input){
+  if (input.dataset.rusBound === '1') return;
+  input.dataset.rusBound = '1';
+  input.addEventListener('input', function(){ this.value = this.value.replace(/[^А-Яа-яЁё\s\-]/g, ''); });
+}
+function bindRusOnly(root){ (root || document).querySelectorAll('.rus-only').forEach(applyRusOnly); }
+function sortStudentsActiveFirst(list){
+  return [...list].sort((a,b) => (!!a.active !== !!b.active) ? (a.active ? -1 : 1) : (a.full_name||'').localeCompare(b.full_name||'', 'ru'));
+}
+function switchTab(tabName) {
+  document.querySelectorAll('.screen').forEach(s => { s.style.display='none'; s.classList.remove('active','screen-anim'); });
+  const t = document.getElementById('screen-' + tabName);
+  if (t){ t.style.display='block'; t.classList.add('active'); void t.offsetWidth; t.classList.add('screen-anim'); }
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tabName));
+  const map = { students:renderStudents, groups:renderGroups, tutors:renderTutors, modules:renderModules };
+  if (map[tabName]) map[tabName](true);
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* ================= АВТОРИЗАЦИЯ ================= */
+function showLoginError(msg){
+  const el = document.getElementById('login-error');
+  el.textContent = msg; el.style.display = 'block';
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+async function login(btn) {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  document.getElementById('login-error').style.display = 'none';
+  if (!email || !password) return showLoginError('Введите email и пароль');
+  if (!supabaseClient) return showLoginError('Supabase недоступен. Проверьте подключение к интернету.');
+  await withBusy(btn, async () => {
+    try {
+      const { data, error } = await withTimeout(supabaseClient.auth.signInWithPassword({ email, password }), 12000);
+      if (error){ showLoginError('Ошибка: ' + error.message); return; }
+      currentUser = data.user;
+      await showApp();
+      toast('Добро пожаловать, ' + (currentUser.email || '') + '!', 'success');
+    } catch(e){ showLoginError('Сервер недоступен. Попробуйте позже.'); }
+  });
+}
+async function logout() {
+  if (supabaseClient){ try { await supabaseClient.auth.signOut(); } catch(e){} }
+  currentUser = null; currentProfileStudentId = null; currentProfileGroupId = null;
+  const app = document.getElementById('app-screen');
+  app.classList.add('app-leave');
+  setTimeout(() => {
+    app.classList.add('hidden'); app.classList.remove('app-leave','app-enter');
+    const ls = document.getElementById('login-screen');
+    ls.classList.remove('hidden','login-enter'); void ls.offsetWidth; ls.classList.add('login-enter');
+    document.getElementById('login-password').value = '';
+  }, 240);
+}
+async function showApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  const app = document.getElementById('app-screen');
+  app.classList.remove('hidden','app-leave','app-enter'); void app.offsetWidth; app.classList.add('app-enter');
+  document.getElementById('user-info').textContent = 'Вы вошли как: ' + (currentUser ? currentUser.email : '');
+  renderSkeletons();
+  await loadAll(true);
+}
+async function loadAll(animate) {
+  startLoad();
+  try {
+    const [t,g,s,m,ms] = await Promise.all([
+      db().from('tutors').select('*').order('id'),
+      db().from('groups').select('*').order('id'),
+      db().from('students').select('*').order('id'),
+      db().from('modules').select('*').order('id'),
+      db().from('module_students').select('*')
+    ]);
+    const err = [t,g,s,m,ms].find(r => r && r.error);
+    if (err) toast('Ошибка загрузки: ' + err.error.message, 'error');
+    allTutors = t.data || []; allGroups = g.data || []; allStudents = s.data || [];
+    allModules = m.data || []; allModuleStudents = ms.data || [];
+    renderAll(!!animate);
+    if (currentProfileStudentId) renderStudentProfile(currentProfileStudentId, false);
+    if (currentProfileGroupId) renderGroupProfile(currentProfileGroupId, false);
+  } finally { endLoad(); }
+}
+function renderAll(animate) {
+  renderStudents(animate); renderGroups(animate); renderTutors(animate); renderModules(animate);
+  const sel = document.getElementById('s-group'), prev = sel.value;
+  sel.innerHTML = '<option value="">Без группы</option>' + allGroups.map(g =>
+    '<option value="' + g.id + '">' + esc(g.name) + (isCamp(g.id) ? ' 🏖' : '') + (timeRange(g) ? ' · ' + timeRange(g) : '') + '</option>').join('');
+  if (prev && allGroups.some(g => String(g.id) === prev)) sel.value = prev;
+}
+
+/* ================= УЧЕНИКИ ================= */
+function renderStudents(animate) {
+  const query = (document.getElementById('search-student').value || '').toLowerCase().trim();
+  const filtered = allStudents.filter(s => {
+    if (!query) return true;
+    const grp = allGroups.find(g => g.id === s.group_id);
+    return [s.full_name, String(s.age), grp ? grp.name : '', getAutoTags(s,'student').join(' ')].join(' ').toLowerCase().includes(query);
+  });
+  const act = allStudents.filter(s => s.active).length;
+  document.getElementById('students-stats').innerHTML =
+    '<span class="stat-chip">Всего: <b>' + allStudents.length + '</b></span>' +
+    '<span class="stat-chip chip-green">Активных: <b>' + act + '</b></span>' +
+    '<span class="stat-chip chip-red">Неактивных: <b>' + (allStudents.length - act) + '</b></span>' +
+    (query ? '<span class="stat-chip chip-blue">Найдено: <b>' + filtered.length + '</b></span>' : '');
+  const list = document.getElementById('students-list');
+  list.classList.toggle('anim', !!animate);
+  list.innerHTML = sortStudentsActiveFirst(filtered).map((s,i) =>
+    '<div class="item ' + (s.active ? '' : 'item-inactive') + '" data-key="student-' + s.id + '" style="--i:' + Math.min(i,10) + '">' +
+      '<div class="item-header" onclick="openStudentProfile(' + s.id + ')">' +
+        '<div class="item-name"><span class="dot ' + (s.active ? 'dot-on' : 'dot-off') + '"></span>' +
+          esc(s.full_name) + (s.active ? '' : ' (неактивен)') + ' ' + renderAutoTagsHtml(s,'student') + '</div>' +
+        '<div class="item-actions">' +
+          '<button onclick="event.stopPropagation(); openEditModal(\'student\', ' + s.id + ')">Ред.</button>' +
+          '<button class="del-btn" onclick="event.stopPropagation(); deleteStudent(' + s.id + ')">Удалить</button>' +
+        '</div></div></div>'
+  ).join('') || emptyState(query ? 'Ничего не найдено' : 'Пока нет учеников', query ? 'Попробуйте изменить поисковый запрос' : 'Добавьте первого ученика в форме выше');
+}
+function openStudentProfile(id){ currentProfileStudentId = id; renderStudentProfile(id, true); switchTab('student-profile'); }
+function closeStudentProfile(){ currentProfileStudentId = null; switchTab('students'); }
+function renderStudentProfile(id, animate) {
+  const s = allStudents.find(x => x.id === id);
+  const container = document.getElementById('student-profile-content');
+  if (!s){ container.innerHTML = '<p>Ученик не найден</p>'; return; }
+  const grp = allGroups.find(g => g.id === s.group_id);
+  const camp = grp ? isCamp(grp.id) : false;
+  const tutor = grp ? allTutors.find(t => t.id === grp.tutor_id) : null;
+  const initial = (s.full_name || '?').trim().charAt(0).toUpperCase();
+  const enrolledText = s.enrolled_at ? new Date(s.enrolled_at).toLocaleDateString('ru-RU') : '—';
+  let historyHtml = '', totalAll = 0, attendedAll = 0;
+  if (grp) {
+    const rows = groupPlanDates(grp);
+    const marks = readJSON(getAttKey(grp.id, s.id), {});
+    historyHtml = rows.map(r => {
+      if (!r.mod) return '';
+      let attended = 0; const missed = [];
+      r._dates.forEach((d,i) => {
+        const mk = marks[fmtDateInput(d)];
+        if (mk === '+') attended++;
+        else if (mk === 'Н' || mk === 'Б') missed.push(i+1);
+      });
+      const total = r._dates.length;
+      totalAll += total; attendedAll += attended;
+      const pct = total ? Math.round(attended/total*100) : 0;
+      const st = planStatus(r);
+      return '<div class="history-card">' +
+        '<h4>' + (r.index+1) + '. ' + esc(r.mod.title) + ' <span class="plan-chip ' + st.cls + '">' + st.txt + '</span></h4>' +
+        '<div class="history-stats">' +
+          '<span>Всего занятий: <span data-count="' + total + '">0</span></span>' +
+          '<span>Посетил: <span data-count="' + attended + '">0</span></span>' +
+          '<span class="missed">Пропустил (№): ' + (missed.length ? missed.join(', ') : 'нет') + '</span>' +
+        '</div>' +
+        '<div class="history-bar"><div class="bar-fill" data-bar="' + pct + '"></div></div>' +
+        '<div style="font-size:12px; color:#888; margin-top:8px;">Период: ' + fmtRu(r._start) + ' – ' + fmtRu(r._end) +
+          (camp ? ' · каждый день' : ' · ' + esc(grp.day_of_week || '')) + '</div></div>';
+    }).join('');
+  }
+  if (!historyHtml) historyHtml = '<div style="color:#888;">История модулей пока пуста или не заданы даты.</div>';
+  const overallPct = totalAll ? Math.round(attendedAll/totalAll*100) : 0;
+  container.classList.toggle('profile-anim', !!animate);
+  container.innerHTML =
+    '<div class="profile-header"><div class="profile-avatar">' + esc(initial) + '</div><div>' +
+      '<h2 class="profile-name" style="border:none; display:block; padding:0; margin:0; color:var(--kiber-dark); text-shadow:none;">' + esc(s.full_name) + '</h2>' +
+      '<span class="profile-status ' + (s.active ? 'status-active' : 'status-inactive') + '">' + (s.active ? 'АКТИВЕН' : 'НЕАКТИВЕН') + '</span>' +
+      '<div style="margin-top:10px;">' + renderAutoTagsHtml(s,'student') + '</div></div></div>' +
+    '<div class="profile-grid">' +
+      '<div class="profile-card"><div class="label">Возраст</div><div class="value">' + (s.age != null ? s.age + ' лет' : '—') + '</div></div>' +
+      '<div class="profile-card"><div class="label">' + (camp ? 'Кибер каникулы' : 'Группа') + '</div><div class="value">' + (grp ? esc(grp.name) + (camp ? ' 🏖' : '') : 'Без группы') + '</div></div>' +
+      '<div class="profile-card"><div class="label">Тьютор</div><div class="value">' + (tutor ? esc(tutor.full_name) : '—') + '</div></div>' +
+      '<div class="profile-card"><div class="label">Дата зачисления</div><div class="value">' + enrolledText + '</div></div>' +
+      '<div class="profile-card" style="border-left-color:var(--kiber-green);"><div class="label">Посещаемость (по плану)</div>' +
+        '<div class="value" style="color:var(--kiber-green);"><span data-count="' + overallPct + '" data-suffix="%">0%</span>' +
+        '<span style="font-size:12px; color:#888; font-weight:600;"> · ' + attendedAll + ' из ' + totalAll + ' занятий</span></div>' +
+        '<div class="history-bar"><div class="bar-fill" data-bar="' + overallPct + '"></div></div></div>' +
+    '</div>' +
+    '<div class="group-lessons-box" style="border-left-color:var(--kiber-blue);">' +
+      '<div class="label" style="color:var(--kiber-dark); font-size:15px;">История прохождения модулей</div>' + historyHtml + '</div>' +
+    '<div class="profile-actions">' +
+      '<button class="add-btn" onclick="openEditModal(\'student\', ' + s.id + ')">Редактировать</button>' +
+      '<button class="del-btn" onclick="deleteStudent(' + s.id + ')">Удалить ученика</button></div>';
+  runCounters(container, !!animate);
+  animateBars(container, !!animate);
+}
+
+/* ================= ГРУППЫ / КАНИКУЛЫ ================= */
+function groupItemHtml(g, i) {
+  const camp = isCamp(g.id);
+  const border = camp ? '#e08a00' : (levelColors[g.level] || '#00c4b3');
+  return '<div class="item ' + (camp ? 'camp-item' : '') + '" data-key="group-' + g.id + '" style="--i:' + Math.min(i,10) + '">' +
+    '<div class="item-header" style="border-left:4px solid ' + border + ';" onclick="openGroupProfile(' + g.id + ')">' +
+      '<div class="item-name">' + (camp ? '🏖 ' : '') + esc(g.name) +
+        (camp ? ' <span class="tag-badge camp-badge">Каникулы</span>' : '') + ' ' + renderAutoTagsHtml(g,'group') + '</div>' +
+      '<div class="item-actions">' +
+        '<button onclick="event.stopPropagation(); openGroupModal(' + g.id + ')">Ред.</button>' +
+        '<button class="del-btn" onclick="event.stopPropagation(); deleteGroup(' + g.id + ')">Удалить</button>' +
+      '</div></div></div>';
+}
+function renderGroups(animate) {
+  const query = (document.getElementById('search-group').value || '').toLowerCase().trim();
+  const filtered = allGroups.filter(g => {
+    if (!query) return true;
+    return [g.name, g.day_of_week, String(g.level), timeRange(g), getAutoTags(g,'group').join(' '),
+      isCamp(g.id) ? 'кибер каникулы каникулы ежедневно' : ''].join(' ').toLowerCase().includes(query);
+  });
+  const regular = filtered.filter(g => !isCamp(g.id)), camps = filtered.filter(g => isCamp(g.id));
+  const list = document.getElementById('groups-list');
+  list.classList.toggle('anim', !!animate);
+  list.innerHTML = regular.map(groupItemHtml).join('') ||
+    emptyState(query ? 'Ничего не найдено' : 'Пока нет групп', query ? 'Попробуйте изменить поисковый запрос' : 'Создайте первую группу кнопкой выше');
+  const cl = document.getElementById('camps-list');
+  cl.classList.toggle('anim', !!animate);
+  cl.innerHTML = camps.map(groupItemHtml).join('') ||
+    emptyState(query ? 'Каникулы не найдены' : 'Пока нет кибер каникул', query ? 'Попробуйте изменить поисковый запрос' : 'Занятия каждый день от первой даты до последней', true);
+}
+function openGroupProfile(id){ currentProfileGroupId = id; currentAttDate = new Date(); renderGroupProfile(id, true); switchTab('group-profile'); }
+function closeGroupProfile(){ currentProfileGroupId = null; switchTab('groups'); }
+function renderGroupProfile(id, animate) {
+  const g = allGroups.find(x => x.id === id);
+  const container = document.getElementById('group-profile-content');
+  if (!g){ container.innerHTML = '<p>Группа не найдена</p>'; return; }
+  const camp = isCamp(g.id);
+  const tut = allTutors.find(t => t.id === g.tutor_id);
+  const groupStudents = sortStudentsActiveFirst(allStudents.filter(s => s.group_id === g.id));
+  const rows = groupPlanDates(g);
+  const span = planSpan(rows);
+  const totalLessons = rows.reduce((a,r) => a + (r._dates.length || 0), 0);
+  let currentModuleText = '—';
+  const active = rows.find(r => planStatus(r).txt === 'Идёт сейчас');
+  const upcoming = rows.find(r => planStatus(r).txt === 'Впереди');
+  const pick = active || upcoming;
+  if (pick && pick.mod) currentModuleText = pick.mod.title + (active ? ' (идёт сейчас)' : ' (следующий)');
+  else if (rows.length && rows.every(r => planStatus(r).txt === 'Завершён')) currentModuleText = 'План завершён 🎉';
+  else if (rows.length && rows[0].mod) currentModuleText = rows[0].mod.title + ' (1-й в плане)';
+
+  const planHtml = rows.length === 0
+    ? '<div style="color:#888; font-weight:600; font-size:14px;">План модулей пока не задан.</div>'
+    : rows.map(r => {
+        const st = planStatus(r);
+        return '<div class="plan-row">' +
+          '<div style="display:flex; justify-content:space-between; width:100%; gap:8px; flex-wrap:wrap;">' +
+            '<span><b>' + (r.index+1) + '.</b> ' + esc(r.mod ? r.mod.title : 'Удалённый модуль') +
+              ' <span class="plan-chip ' + st.cls + '">' + st.txt + '</span></span>' +
+            '<span style="font-weight:800; color:var(--teal-deep);">' + r._dates.length + ' зан.</span></div>' +
+          '<div style="font-size:12px; color:#888;">Период: <b>' + fmtRu(r._start) + '</b> – <b>' + fmtRu(r._end) + '</b>' +
+            (camp ? ' · каждый день' : ' · ' + esc(g.day_of_week || '')) + '</div></div>';
+      }).join('') +
+      '<div style="padding:10px; font-weight:800; text-align:right;">Всего: <span data-count="' + totalLessons + '">0</span> занятий' +
+        (span ? ' · ' + fmtRu(span.start) + ' → ' + fmtRu(span.end) : '') + '</div>';
+
+  const studentsHtml = groupStudents.length
+    ? groupStudents.map(s =>
+        '<div class="group-student-link" onclick="openStudentProfile(' + s.id + ')" style="' + (s.active ? '' : 'opacity:.6;') + '">' +
+        '<span><span class="dot ' + (s.active ? 'dot-on' : 'dot-off') + '" style="margin-right:8px;"></span>' +
+        esc(s.full_name) + (s.active ? '' : ' (неактивен)') + '</span>' +
+        '<span style="color:#00c4b3; font-weight:800;">→</span></div>').join('')
+    : '<div style="color:#777; font-weight:600;">Пока нет учеников</div>';
+
+  const avatarStyle = camp ? 'style="background:linear-gradient(135deg,#ffb020,#e08a00);box-shadow:0 6px 16px rgba(224,138,0,.45);"' : '';
+  const statusHtml = camp
+    ? '<span class="profile-status" style="background:#fff1d6;color:#a06a00;">🏖 КИБЕР КАНИКУЛЫ · ЕЖЕДНЕВНО</span>'
+    : '<span class="profile-status status-active">Уровень ' + (g.level || 1) + '</span>';
+  const tr = timeRange(g);
+  const campDays = span ? dailyRange(span.start, span.end, MAX_CAMP_DAYS).length : 0;
+
+  const attControls = camp
+    ? (span
+        ? '<div class="att-period-banner">📅 Период каникул: <b>' + fmtRu(span.start) + '</b> → <b>' + fmtRu(span.end) + '</b>' +
+          '<span>·</span> <b>' + campDays + '</b> дней подряд' + (campDays >= MAX_CAMP_DAYS ? ' (показаны первые ' + MAX_CAMP_DAYS + ')' : '') +
+          '<span class="att-saved-hint" id="att-saved-hint">✓ Сохранено</span></div>'
+        : '<div class="att-period-banner">Задайте план модулей с датой начала — табель каникул построится автоматически по всем дням периода.' +
+          '<span class="att-saved-hint" id="att-saved-hint">✓ Сохранено</span></div>')
+    : '<div class="attendance-controls"><div><label>Выберите месяц (любая дата)</label>' +
+        '<div style="display:flex; gap:8px; align-items:center;">' +
+          '<button class="att-nav" onclick="shiftAttMonth(' + g.id + ', -1)" aria-label="Предыдущий месяц">◀</button>' +
+          '<input type="date" id="att-date" value="' + fmtDateInput(currentAttDate) + '" onchange="changeAttDate(' + g.id + ')">' +
+          '<button class="att-nav" onclick="shiftAttMonth(' + g.id + ', 1)" aria-label="Следующий месяц">▶</button>' +
+        '</div></div><span class="att-month-label" id="att-month-label"></span>' +
+        '<span class="att-saved-hint" id="att-saved-hint">✓ Сохранено</span></div>';
+
+  container.classList.toggle('profile-anim', !!animate);
+  container.innerHTML =
+    '<div class="profile-header"><div class="profile-avatar" ' + avatarStyle + '>' + esc((g.name||'?').trim().charAt(0).toUpperCase()) + '</div><div>' +
+      '<h2 class="profile-name" style="border:none; display:block; padding:0; margin:0; color:var(--kiber-dark); text-shadow:none;">' + (camp ? '🏖 ' : 'Группа ') + esc(g.name) + '</h2>' +
+      statusHtml + '<div style="margin-top:10px;">' + renderAutoTagsHtml(g,'group') + '</div></div></div>' +
+    '<div class="profile-grid">' +
+      '<div class="profile-card"><div class="label">' + (camp ? 'Режим занятий' : 'День недели') + '</div><div class="value">' + (camp ? 'Каждый день' : esc(g.day_of_week || '—')) + '</div></div>' +
+      '<div class="profile-card" style="border-left-color:var(--electric);"><div class="label">🕒 Время занятий</div><div class="value" style="color:var(--kiber-blue); font-variant-numeric:tabular-nums;">' + esc(tr || '—') + '</div></div>' +
+      '<div class="profile-card"><div class="label">Тьютор</div><div class="value">' + (tut ? esc(tut.full_name) : '—') + '</div></div>' +
+      '<div class="profile-card" style="border-left-color:var(--violet);"><div class="label">Период (авто)</div><div class="value" style="color:var(--violet-deep); font-variant-numeric:tabular-nums;">' + (span ? fmtRu(span.start) + ' → ' + fmtRu(span.end) : '—') + '</div></div>' +
+      '<div class="profile-card" style="border-left-color:var(--kiber-yellow);"><div class="label">Текущий модуль</div><div class="value" style="color:var(--kiber-blue);">' + esc(currentModuleText) + '</div></div>' +
+    '</div>' +
+    '<div class="group-lessons-box"><div class="label">План ' + (camp ? 'кибер каникул' : 'модулей группы') + ' · период рассчитан автоматически</div>' + planHtml + '</div>' +
+    '<div class="profile-modules-title">Ученики (<span data-count="' + groupStudents.length + '">0</span>)</div>' +
+    '<div style="margin-bottom:25px;">' + studentsHtml + '</div>' +
+    '<div class="group-lessons-box" style="border-left-color:' + (camp ? 'var(--amber-bright)' : 'var(--kiber-teal)') + ';">' +
+      '<div class="label" style="font-size:15px; color:var(--kiber-dark);">Табель посещаемости · ' + (camp ? 'каждый день периода' : 'дни занятий группы') + '</div>' +
+      attControls +
+      '<div class="attendance-table-wrapper"><div id="att-grid-container"></div></div>' +
+      '<div id="att-mod-legend" class="att-mod-legend"></div>' +
+      '<div class="attendance-legend"><div>Вводите в поля обозначения:</div>' +
+        '<div><span class="legend-mark plus">+</span> Есть</div><div><span class="legend-mark n">Н</span> Нет</div>' +
+        '<div><span class="legend-mark b">Б</span> Болен</div><div><span class="legend-mark o">О</span> Отпуск</div></div>' +
+    '</div>' +
+    '<div class="profile-actions" style="margin-top:30px;">' +
+      '<button class="add-btn" onclick="openGroupModal(' + g.id + ')">' + (camp ? 'Редактировать каникулы' : 'Редактировать группу') + '</button>' +
+      '<button class="del-btn" onclick="deleteGroup(' + g.id + ')">Удалить</button></div>';
+  runCounters(container, !!animate);
+  renderAttendanceGrid(g.id, !!animate);
+}
+function changeAttDate(groupId){
+  const d = parseLocalDate(document.getElementById('att-date').value);
+  if (d){ currentAttDate = d; renderAttendanceGrid(groupId, true); }
+}
+function shiftAttMonth(groupId, delta){
+  currentAttDate = new Date(currentAttDate.getFullYear(), currentAttDate.getMonth() + delta, 1);
+  const inp = document.getElementById('att-date');
+  if (inp) inp.value = fmtDateInput(currentAttDate);
+  renderAttendanceGrid(groupId, true);
+}
+const MARK_CLASS = { '+':'mark-plus', 'Н':'mark-n', 'Б':'mark-b', 'О':'mark-o' };
+function renderAttendanceGrid(groupId, animate) {
+  const container = document.getElementById('att-grid-container');
+  if (!container) return;
+  container.classList.toggle('att-anim', !!animate);
+  const legendBox = document.getElementById('att-mod-legend');
+  if (legendBox) legendBox.innerHTML = '';
+  const group = allGroups.find(g => g.id === groupId);
+  if (!group){ container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">Группа не найдена.</div>'; return; }
+  const camp = isCamp(groupId);
+  const wd = dayMap[group.day_of_week];
+  const groupStudents = sortStudentsActiveFirst(allStudents.filter(s => s.group_id === groupId));
+  const rows = groupPlanDates(group);
+  const label = document.getElementById('att-month-label');
+  if (label) label.textContent = currentAttDate.toLocaleDateString('ru-RU', { month:'long', year:'numeric' });
+
+  if (!groupStudents.length){
+    container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">Нет учеников для отображения табеля.</div>';
+    return;
+  }
+  let cols = [];
+  if (camp) {
+    const span = planSpan(rows);
+    if (!span){
+      container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">Укажите дату начала и количество занятий в плане каникул — табель появится автоматически.</div>';
+      return;
+    }
+    cols = dailyRange(span.start, span.end, MAX_CAMP_DAYS).map(d => ({ date:d, dateStr:fmtDateInput(d), day:d.getDate(), wd:d.getDay(), mo:d.getMonth() }));
+  } else {
+    const y = currentAttDate.getFullYear(), m = currentAttDate.getMonth();
+    const dim = new Date(y, m+1, 0).getDate();
+    const w = (wd === undefined) ? null : wd;
+    for (let d = 1; d <= dim; d++){
+      const date = new Date(y, m, d);
+      if (w === null || date.getDay() === w)
+        cols.push({ date, dateStr:fmtDateInput(date), day:d, wd:date.getDay(), mo:m });
+    }
+    if (!cols.length){
+      container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">В этом месяце нет занятий по расписанию.</div>';
+      return;
+    }
+  }
+  const marksBy = {}, totals = cols.map(() => 0);
+  groupStudents.forEach(s => {
+    const marks = readJSON(getAttKey(groupId, s.id), {});
+    marksBy[s.id] = marks;
+    cols.forEach((c,i) => { if (marks[c.dateStr] === '+') totals[i]++; });
+  });
+  const modNums = cols.map(c => moduleIndexAt(rows, c.date, camp, wd));
+  let prevMo = null;
+  let html = '<table class="attendance-table"><thead><tr><th class="student-name-cell">Фамилия, имя ребёнка</th>';
+  cols.forEach(c => {
+    const weekend = (c.wd === 0 || c.wd === 6);
+    const showMo = camp && (c.mo !== prevMo);
+    prevMo = c.mo;
+    html += '<th class="' + (weekend && camp ? 'att-weekend' : '') + '">' +
+      (showMo ? '<div class="att-mo">' + MO_SHORT[c.mo] + '</div>' : '') +
+      '<div class="att-d">' + c.day + '</div><div class="att-wd">' + WD_SHORT[c.wd] + '</div></th>';
+  });
+  html += '</tr><tr class="att-mod-row"><th class="student-name-cell">Модуль</th>';
+  modNums.forEach(n => { html += '<th>' + (n ? '<span class="att-mod-num">' + n + '</span>' : '<span class="att-mod-none">·</span>') + '</th>'; });
+  html += '</tr></thead><tbody>';
+  groupStudents.forEach(s => {
+    const marks = marksBy[s.id];
+    html += '<tr><td class="student-name-cell">' + esc(s.full_name) + (s.active ? '' : ' (неактивен)') + '</td>';
+    cols.forEach(c => {
+      const v = marks[c.dateStr] || '';
+      const weekend = camp && (c.wd === 0 || c.wd === 6);
+      html += '<td class="' + (weekend ? 'att-weekend' : '') + '"><input type="text" class="cell-input ' + (MARK_CLASS[v] || '') + '" maxlength="3" value="' + esc(v) + '" placeholder="-" ' +
+        'onchange="saveAttendanceMark(' + groupId + ', ' + s.id + ', \'' + c.dateStr + '\', this)" onkeydown="attCellKey(event, this)"></td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody><tfoot><tr class="att-total-row"><td class="student-name-cell">Итого «+»</td>';
+  totals.forEach(n => { html += '<td>' + n + '</td>'; });
+  html += '</tr></tfoot></table>';
+  container.innerHTML = html;
+  if (legendBox) {
+    const used = rows.filter(r => r.mod && modNums.indexOf(r.index+1) !== -1);
+    legendBox.innerHTML = used.map(r => '<span><b class="att-mod-num">' + (r.index+1) + '</b> ' + esc(r.mod.title) + '</span>').join('');
+  }
+}
+function saveAttendanceMark(groupId, studentId, dateStr, input) {
+  const key = getAttKey(groupId, studentId);
+  const marks = readJSON(key, {});
+  const v = input.value.trim().toUpperCase();
+  input.value = v;
+  if (v === '') delete marks[dateStr]; else marks[dateStr] = v;
+  lsSet(key, JSON.stringify(marks));
+  input.classList.remove('mark-plus','mark-n','mark-b','mark-o','flash');
+  void input.offsetWidth;
+  if (MARK_CLASS[v]) input.classList.add(MARK_CLASS[v]);
+  input.classList.add('flash');
+  const hint = document.getElementById('att-saved-hint');
+  if (hint){ hint.classList.add('show'); clearTimeout(hint._t); hint._t = setTimeout(()=>hint.classList.remove('show'), 1300); }
+}
+function attCellKey(e, input) {
+  if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  e.preventDefault();
+  if (e.key === 'Enter') input.blur();
+  const td = input.closest('td'), tr = td.closest('tr');
+  const idx = Array.prototype.indexOf.call(tr.children, td);
+  const next = e.key === 'ArrowUp' ? tr.previousElementSibling : tr.nextElementSibling;
+  if (next && next.children[idx]){ const ni = next.children[idx].querySelector('input'); if (ni){ ni.focus(); ni.select(); } }
+}
+
+/* ================= ТЬЮТОРЫ / МОДУЛИ ================= */
+function renderTutors(animate) {
+  const query = (document.getElementById('search-tutor').value || '').toLowerCase().trim();
+  const filtered = allTutors.filter(t => !query || [t.full_name, t.specialization, getAutoTags(t,'tutor').join(' ')].join(' ').toLowerCase().includes(query));
+  const list = document.getElementById('tutors-list');
+  list.classList.toggle('anim', !!animate);
+  list.innerHTML = filtered.map((t,i) =>
+    '<div class="item" data-key="tutor-' + t.id + '" style="--i:' + Math.min(i,10) + '">' +
+      '<div class="item-header" style="cursor:default;"><div class="item-name">[' + t.id + '] ' + esc(t.full_name) +
+        ' — <span style="font-weight:600; font-size:14px; color:#666;">' + esc(t.specialization || '—') + '</span> ' + renderAutoTagsHtml(t,'tutor') + '</div>' +
+        '<div class="item-actions"><button onclick="openEditModal(\'tutor\', ' + t.id + ')">Ред.</button>' +
+        '<button class="del-btn" onclick="deleteTutor(' + t.id + ')">Удалить</button></div></div></div>'
+  ).join('') || emptyState(query ? 'Ничего не найдено' : 'Пока нет тьюторов', query ? 'Попробуйте изменить поисковый запрос' : 'Добавьте первого тьютора в форме выше');
+}
+function renderModules(animate) {
+  const query = (document.getElementById('search-module').value || '').toLowerCase().trim();
+  const filtered = allModules.filter(m => !query || String(m.title).toLowerCase().includes(query));
+  const list = document.getElementById('modules-list');
+  list.classList.toggle('anim', !!animate);
+  list.innerHTML = filtered.map((m,i) =>
+    '<div class="item" data-key="module-' + m.id + '" style="--i:' + Math.min(i,10) + '">' +
+      '<div class="item-header" style="cursor:default; border-left:4px solid var(--violet);">' +
+        '<div class="item-name">[' + m.id + '] ' + esc(m.title) + ' ' + renderAutoTagsHtml(m,'module') + '</div>' +
+        '<div class="item-actions"><button onclick="openEditModal(\'module\', ' + m.id + ')">Ред.</button>' +
+        '<button class="del-btn" onclick="deleteModule(' + m.id + ')">Удалить</button></div></div></div>'
+  ).join('') || emptyState(query ? 'Ничего не найдено' : 'Пока нет модулей', query ? 'Попробуйте изменить поисковый запрос' : 'Добавьте первый модуль в форме выше');
+}
+
+/* ================= ПОИСК МОДУЛЯ ================= */
+function moduleComboHtml(moduleId) {
+  const mod = allModules.find(m => m.id === moduleId);
+  return '<div class="ms-combo">' +
+    '<button type="button" class="ms-control' + (mod ? '' : ' is-empty') + '" onclick="toggleModuleCombo(this)" aria-haspopup="listbox">' +
+      '<span class="ms-label">' + (mod ? esc(mod.title) : '— Выберите модуль —') + '</span><span class="ms-caret">▾</span></button>' +
+    '<div class="ms-panel"><div class="ms-search-wrap">' + SEARCH_SVG +
+      '<input type="search" class="ms-search" autocomplete="off" maxlength="60" placeholder="Поиск модуля по названию…" oninput="filterModuleCombo(this)" onkeydown="moduleComboKey(event, this)">' +
+    '</div><div class="ms-options" role="listbox"></div></div></div>';
+}
+function moduleOptionsHtml(query, selectedId) {
+  const q = (query || '').toLowerCase().trim();
+  const list = allModules.filter(m => !q || (String(m.title) + ' ' + m.id).toLowerCase().includes(q));
+  if (!allModules.length) return '<div class="ms-empty">Сначала создайте модули во вкладке «Модули»</div>';
+  if (!list.length) return '<div class="ms-empty">Модуль не найден<br>по запросу «' + esc(query) + '»</div>';
+  return list.map((m,i) =>
+    '<button type="button" role="option" class="ms-option' + (i===0 ? ' is-active' : '') + (m.id===selectedId ? ' is-selected' : '') + '" data-id="' + m.id + '" onclick="pickModule(this)">' +
+    '<span>' + esc(m.title) + '</span>' + (m.hours ? '<span class="ms-hours">' + m.hours + ' ч</span>' : '') + '</button>').join('');
+}
+function closeAllModuleCombos(){ document.querySelectorAll('#modal-g-modules-plan .ms-combo.open').forEach(c => c.classList.remove('open')); }
+function toggleModuleCombo(btn) {
+  const combo = btn.closest('.ms-combo'), row = combo.closest('.module-list-item');
+  const wasOpen = combo.classList.contains('open');
+  closeAllModuleCombos();
+  if (wasOpen) return;
+  combo.classList.add('open');
+  const input = combo.querySelector('.ms-search');
+  input.value = '';
+  combo.querySelector('.ms-options').innerHTML = moduleOptionsHtml('', parseInt(row.dataset.moduleId,10) || null);
+  setTimeout(()=>input.focus(), 40);
+}
+function filterModuleCombo(input) {
+  const combo = input.closest('.ms-combo'), row = combo.closest('.module-list-item');
+  combo.querySelector('.ms-options').innerHTML = moduleOptionsHtml(input.value, parseInt(row.dataset.moduleId,10) || null);
+}
+function moduleComboKey(e, input) {
+  const combo = input.closest('.ms-combo');
+  const opts = Array.prototype.slice.call(combo.querySelectorAll('.ms-option'));
+  if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeAllModuleCombos(); combo.querySelector('.ms-control').focus(); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    e.preventDefault(); if (!opts.length) return;
+    let idx = opts.findIndex(o => o.classList.contains('is-active'));
+    idx = idx < 0 ? 0 : (idx + (e.key==='ArrowDown'?1:-1) + opts.length) % opts.length;
+    opts.forEach(o => o.classList.remove('is-active'));
+    opts[idx].classList.add('is-active'); opts[idx].scrollIntoView({ block:'nearest' });
+    return;
+  }
+  if (e.key === 'Enter'){ e.preventDefault(); const a = combo.querySelector('.ms-option.is-active') || opts[0]; if (a) pickModule(a); }
+}
+function pickModule(btn) {
+  const id = parseInt(btn.dataset.id, 10);
+  const combo = btn.closest('.ms-combo'), row = combo.closest('.module-list-item');
+  row.dataset.moduleId = id;
+  const mod = allModules.find(m => m.id === id);
+  const ctrl = combo.querySelector('.ms-control');
+  ctrl.classList.remove('is-empty');
+  ctrl.querySelector('.ms-label').textContent = mod ? mod.title : '— Выберите модуль —';
+  closeAllModuleCombos();
+  syncPlanFromDOM();
+  row.classList.remove('row-moved'); void row.offsetWidth; row.classList.add('row-moved');
+  const num = row.querySelector('input[type="number"]'); if (num) num.focus();
+}
+
+/* ================= ПЛАН: АВТО-ПЕРИОД ================= */
+function renderModulePlanRow(moduleId, lessons, startDate) {
+  return '<div class="module-list-item" data-module-id="' + (moduleId || '') + '" data-start="' + (startDate || '') + '" data-end="">' +
+    '<div class="plan-row-head"><span class="plan-index">1</span>' + moduleComboHtml(moduleId) + '</div>' +
+    '<div class="plan-row-fields">' +
+      '<label class="fld fld-num"><span>Занятий</span>' +
+        '<input type="number" min="1" max="' + MAX_LESSONS + '" value="' + (lessons || 1) + '" oninput="updatePlanRowLessons(this)" onchange="updatePlanRowLessons(this)"></label>' +
+      '<label class="fld fld-date"><span>Дата начала</span>' +
+        '<input type="date" value="' + (startDate || '') + '" onchange="updatePlanRowDates(this)"></label>' +
+      '<div class="fld"><span>Окончание · авто</span>' +
+        '<div class="auto-end"><span class="plan-end-date">—</span><span class="plan-end-wd"></span></div></div>' +
+      '<div class="plan-row-btns">' +
+        '<button type="button" class="mini-btn" onclick="movePlanRow(this,-1)" title="Выше">↑</button>' +
+        '<button type="button" class="mini-btn" onclick="movePlanRow(this,1)" title="Ниже">↓</button>' +
+        '<button type="button" class="del-btn" onclick="removePlanRow(this)" style="padding:6px 10px;" title="Убрать из плана">✕</button>' +
+      '</div></div></div>';
+}
+function planRows(){ return Array.prototype.slice.call(document.querySelectorAll('#modal-g-modules-plan .module-list-item:not(.removing)')); }
+function renumberPlanRows(){ planRows().forEach((r,i) => { const b = r.querySelector('.plan-index'); if (b) b.textContent = i+1; }); }
+function recalcPlanChain(anchorIndex) {
+  const camp = modalIsCamp;
+  const wd = dayMap[document.getElementById('modal-g-day').value];
+  const rows = planRows();
+  let prevEnd = null;
+  rows.forEach((row, i) => {
+    const numEl = row.querySelector('input[type="number"]');
+    let lessons = parseInt(numEl.value, 10);
+    if (!lessons || lessons < 1) lessons = 1;
+    if (lessons > MAX_LESSONS) lessons = MAX_LESSONS;
+    if (String(numEl.value) !== String(lessons)) numEl.value = lessons;
+    const dateEl = row.querySelector('input[type="date"]');
+    let start = parseLocalDate(dateEl.value);
+    if (!start) {
+      start = prevEnd ? nextLessonAfter(prevEnd, camp) : new Date();
+      if (!camp) start = snapToWeekday(start, wd);
+    } else if (i > anchorIndex && prevEnd) {
+      start = nextLessonAfter(prevEnd, camp);
+    } else if (!camp) {
+      start = snapToWeekday(start, wd);
+    }
+    const dates = lessonDatesFrom(start, lessons, camp, wd);
+    const first = dates[0], last = dates[dates.length-1];
+    dateEl.value = fmtDateInput(first);
+    row.dataset.start = fmtDateInput(first);
+    row.dataset.end = fmtDateInput(last);
+    const endEl = row.querySelector('.plan-end-date'), wdEl = row.querySelector('.plan-end-wd');
+    const txt = fmtRu(last);
+    if (endEl.textContent !== txt) {
+      endEl.textContent = txt;
+      wdEl.textContent = camp ? 'ежедн.' : WD_SHORT[last.getDay()];
+      const box = row.querySelector('.auto-end');
+      box.classList.remove('recalc'); void box.offsetWidth; box.classList.add('recalc');
+    } else { wdEl.textContent = camp ? 'ежедн.' : WD_SHORT[last.getDay()]; }
+    prevEnd = last;
+  });
+  syncPlanFromDOM();
+  updatePlanSummary();
+}
+function updatePlanSummary() {
+  const box = document.getElementById('plan-summary');
+  if (!box) return;
+  const rows = planRows().filter(r => r.dataset.moduleId && r.dataset.start && r.dataset.end);
+  if (!rows.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const total = rows.reduce((a,r) => a + (parseInt(r.querySelector('input[type="number"]').value,10) || 0), 0);
+  const s = parseLocalDate(rows[0].dataset.start);
+  const e = parseLocalDate(rows[rows.length-1].dataset.end);
+  box.style.display = 'flex';
+  box.classList.toggle('is-camp', modalIsCamp);
+  box.innerHTML = '<span class="ps-dot"></span>Модулей: ' + rows.length +
+    '<span class="ps-dot"></span>Всего занятий: ' + total +
+    '<span class="ps-dot"></span>Период: ' + fmtRu(s) + ' → ' + fmtRu(e) +
+    (modalIsCamp ? '<span class="ps-dot"></span>каждый день' : '');
+}
+function addModulePlanRow() {
+  const c = document.getElementById('modal-g-modules-plan');
+  const anchor = planRows().length - 1;
+  c.insertAdjacentHTML('beforeend', renderModulePlanRow('', 1, ''));
+  renumberPlanRows();
+  recalcPlanChain(anchor);
+  const row = c.lastElementChild;
+  toggleModuleCombo(row.querySelector('.ms-control'));
+  row.scrollIntoView({ block:'nearest', behavior:'smooth' });
+}
+function removePlanRow(btn) {
+  const row = btn.closest('.module-list-item');
+  const idx = planRows().indexOf(row);
+  row.style.maxHeight = row.scrollHeight + 'px';
+  row.classList.add('removing');
+  setTimeout(() => { row.remove(); renumberPlanRows(); recalcPlanChain(Math.max(0, idx-1)); }, 280);
+}
+function movePlanRow(btn, dir) {
+  const row = btn.closest('.module-list-item');
+  const sib = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+  if (!sib) return;
+  closeAllModuleCombos();
+  if (dir < 0) row.parentNode.insertBefore(row, sib); else row.parentNode.insertBefore(sib, row);
+  row.classList.remove('row-moved'); void row.offsetWidth; row.classList.add('row-moved');
+  renumberPlanRows(); recalcPlanChain(0);
+}
+function updatePlanRowLessons(el) {
+  const row = el.closest('.module-list-item');
+  recalcPlanChain(planRows().indexOf(row));
+}
+function updatePlanRowDates(el) {
+  const row = el.closest('.module-list-item');
+  const before = row.dataset.start;
+  const picked = el.value;
+  recalcPlanChain(planRows().indexOf(row));
+  if (!modalIsCamp && picked && row.dataset.start && picked !== row.dataset.start) {
+    toast('Дата начала перенесена на ближайший день занятий группы', 'info');
+  }
+}
+function onGroupDayChange(){ recalcPlanChain(0); }
+function syncPlanFromDOM() {
+  currentGroupModulesPlan = [];
+  planRows().forEach(r => {
+    const mId = parseInt(r.dataset.moduleId, 10);
+    const lessons = parseInt(r.querySelector('input[type="number"]').value, 10);
+    if (mId && lessons > 0 && r.dataset.start) currentGroupModulesPlan.push({
+      moduleId: mId, lessons, startDate: r.dataset.start, endDate: r.dataset.end || ''
+    });
+  });
+}
+
+/* ================= ПОИСК УЧЕНИКОВ В МОДАЛКЕ ================= */
+function studentPickRowHtml(s, groupId) {
+  const cur = allGroups.find(g => g.id === s.group_id);
+  const moving = cur && cur.id !== groupId;
+  const tags = [];
+  if (s.age) tags.push('<span class="mini-tag">' + s.age + ' лет</span>');
+  if (moving) tags.push('<span class="mini-tag warn">Сейчас: ' + esc(cur.name) + (isCamp(cur.id) ? ' 🏖' : '') + '</span>');
+  if (!s.active) tags.push('<span class="mini-tag off">неактивен</span>');
+  const hay = [s.full_name, String(s.age||''), cur ? cur.name : '', s.active ? 'активен' : 'неактивен'].join(' ').toLowerCase();
+  const checked = groupId ? s.group_id === groupId : false;
+  return '<label class="pick-row' + (checked ? ' is-checked' : '') + '" data-search="' + esc(hay) + '">' +
+    '<input type="checkbox" value="' + s.id + '" ' + (checked ? 'checked' : '') + ' onchange="onStudentPickChange(this)">' +
+    '<span class="pick-main"><span class="pick-name">' + esc(s.full_name) + '</span>' +
+    (tags.length ? '<span class="pick-tags">' + tags.join('') + '</span>' : '') + '</span></label>';
+}
+function filterModalStudents() {
+  const wrap = document.getElementById('modal-g-students');
+  if (!wrap) return;
+  const searchEl = document.getElementById('modal-student-search');
+  const q = ((searchEl && searchEl.value) || '').toLowerCase().trim();
+  const rows = wrap.querySelectorAll('.pick-row');
+  let shown = 0, checked = 0;
+  rows.forEach(r => {
+    const cb = r.querySelector('input');
+    if (cb.checked) checked++;
+    const ok = (!q || (r.dataset.search || '').indexOf(q) !== -1) && (!onlySelectedStudents || cb.checked);
+    r.style.display = ok ? '' : 'none';
+    if (ok) shown++;
+  });
+  const meta = document.getElementById('student-picker-meta');
+  if (meta) meta.innerHTML = 'Выбрано: <b>' + checked + '</b><span>·</span>Показано: <b>' + shown + '</b> из ' + rows.length;
+  const empty = document.getElementById('student-picker-empty');
+  if (empty) empty.style.display = (rows.length && !shown) ? 'block' : 'none';
+  const clr = document.getElementById('student-search-clear');
+  if (clr) clr.style.display = q ? 'block' : 'none';
+}
+function onStudentPickChange(cb){ const r = cb.closest('.pick-row'); if (r) r.classList.toggle('is-checked', cb.checked); filterModalStudents(); }
+function clearStudentSearch(){ const el = document.getElementById('modal-student-search'); if (el){ el.value=''; el.focus(); } filterModalStudents(); }
+function selectFoundStudents() {
+  const rows = Array.prototype.slice.call(document.querySelectorAll('#modal-g-students .pick-row')).filter(r => r.style.display !== 'none');
+  if (!rows.length) return toast('Нет учеников в выдаче поиска', 'warn');
+  rows.forEach(r => { r.querySelector('input').checked = true; r.classList.add('is-checked'); });
+  filterModalStudents();
+  toast('Выбрано учеников: ' + rows.length, 'success');
+}
+function clearAllStudents() {
+  document.querySelectorAll('#modal-g-students .pick-row').forEach(r => { r.querySelector('input').checked = false; r.classList.remove('is-checked'); });
+  filterModalStudents();
+}
+function toggleOnlySelected() {
+  onlySelectedStudents = !onlySelectedStudents;
+  const b = document.getElementById('only-selected-btn');
+  if (b) b.classList.toggle('is-on', onlySelectedStudents);
+  filterModalStudents();
+}
+
+/* ================= МОДАЛКА ГРУППЫ ================= */
+function openGroupModal(id, isCampFlag) {
+  id = id || null;
+  modalIsCamp = id ? isCamp(id) : !!isCampFlag;
+  onlySelectedStudents = false;
+  const onlyBtn = document.getElementById('only-selected-btn'); if (onlyBtn) onlyBtn.classList.remove('is-on');
+  const se = document.getElementById('modal-student-search'); if (se) se.value = '';
+  document.getElementById('modal-error').style.display = 'none';
+  document.getElementById('modal-title').textContent = id
+    ? (modalIsCamp ? 'Редактировать кибер каникулы' : 'Редактировать группу')
+    : (modalIsCamp ? 'Создать кибер каникулы' : 'Создать группу');
+  document.getElementById('modal-camp-note').style.display = modalIsCamp ? 'flex' : 'none';
+  document.getElementById('modal-daily-note').style.display = modalIsCamp ? 'flex' : 'none';
+  document.getElementById('modal-day-field').style.display = modalIsCamp ? 'none' : 'block';
+  document.getElementById('plan-hint').innerHTML = modalIsCamp
+    ? 'Каникулы идут <b>каждый день</b>: укажите дату начала и количество занятий — последняя дата и старт следующего модуля посчитаются сами.'
+    : 'Укажите <b>дату начала</b> и <b>количество занятий</b> — дата окончания посчитается по дню недели группы, а следующий модуль начнётся на следующей неделе.';
+  document.getElementById('modal-g-tutor').innerHTML =
+    '<option value="">— Без тьютора —</option>' + allTutors.map(t => '<option value="' + t.id + '">' + esc(t.full_name) + '</option>').join('');
+  const studentsContainer = document.getElementById('modal-g-students');
+  const planContainer = document.getElementById('modal-g-modules-plan');
+  planContainer.innerHTML = '';
+  currentGroupModulesPlan = [];
+  const roster = sortStudentsActiveFirst(allStudents);
+  let gid = null;
+  if (id) {
+    const g = allGroups.find(x => x.id === id);
+    if (!g) return;
+    gid = g.id;
+    document.getElementById('modal-group-id').value = g.id;
+    document.getElementById('modal-g-name').value = g.name;
+    document.getElementById('modal-g-level').value = g.level || 1;
+    document.getElementById('modal-g-day').value = g.day_of_week || 'Понедельник';
+    document.getElementById('modal-g-start').value = fmtTime(g.time_start) || '10:00';
+    document.getElementById('modal-g-end').value = fmtTime(g.time_end) || '11:30';
+    document.getElementById('modal-g-tutor').value = g.tutor_id || '';
+    getGroupModulesPlan(g.id).forEach(p => planContainer.insertAdjacentHTML('beforeend', renderModulePlanRow(p.moduleId, p.lessons, p.startDate)));
+  } else {
+    document.getElementById('modal-group-id').value = '';
+    document.getElementById('modal-g-name').value = '';
+    document.getElementById('modal-g-level').value = '1';
+    document.getElementById('modal-g-day').value = 'Понедельник';
+    document.getElementById('modal-g-start').value = '10:00';
+    document.getElementById('modal-g-end').value = '11:30';
+  }
+  studentsContainer.innerHTML = roster.map(s => studentPickRowHtml(s, gid)).join('') ||
+    '<div class="picker-empty" style="display:block;">Список учеников пуст<span>Добавьте учеников во вкладке «Ученики»</span></div>';
+  renumberPlanRows();
+  recalcPlanChain(0);
+  filterModalStudents();
+  openModalEl(document.getElementById('group-modal'));
+}
+function closeGroupModal(){ closeAllModuleCombos(); closeModalEl(document.getElementById('group-modal')); }
+async function saveGroup(btn) {
+  const errorEl = document.getElementById('modal-error');
+  const fail = msg => { errorEl.textContent = msg; errorEl.style.display='block'; errorEl.classList.remove('shake'); void errorEl.offsetWidth; errorEl.classList.add('shake'); };
+  errorEl.style.display = 'none';
+  const idRaw = document.getElementById('modal-group-id').value;
+  const idNum = idRaw ? parseInt(idRaw, 10) : null;
+  const name = document.getElementById('modal-g-name').value.trim();
+  const level = parseInt(document.getElementById('modal-g-level').value, 10);
+  let day_of_week = document.getElementById('modal-g-day').value;
+  const time_start = document.getElementById('modal-g-start').value;
+  const time_end = document.getElementById('modal-g-end').value;
+  const tutorVal = document.getElementById('modal-g-tutor').value;
+  const tutor_id = tutorVal ? parseInt(tutorVal, 10) : null;
+  const checkedStudents = Array.from(document.querySelectorAll('#modal-g-students input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10));
+  if (!name) return fail('Введите название');
+  if (time_start && time_end && time_start >= time_end) return fail('Время окончания должно быть позже времени начала');
+  recalcPlanChain(planRows().length);
+  if (planRows().length > 0 && currentGroupModulesPlan.length === 0)
+    return fail('Выберите модуль в плане (через поиск) или уберите пустую строку');
+  if (modalIsCamp && currentGroupModulesPlan.length) {
+    const first = parseLocalDate(currentGroupModulesPlan[0].startDate);
+    if (first) day_of_week = Object.keys(dayMap).find(k => dayMap[k] === first.getDay()) || day_of_week;
+  }
+  await withBusy(btn, async () => {
+    let groupId = idNum, result;
+    const payload = { name, level, day_of_week, time_start, time_end, tutor_id, module_id: null };
+    if (idNum) result = await db().from('groups').update(payload).eq('id', idNum);
+    else {
+      result = await db().from('groups').insert(payload).select().single();
+      if (result.data) groupId = result.data.id;
+    }
+    if (result.error) return fail('Ошибка БД: ' + result.error.message);
+    if (groupId){ lsSet(getModulesPlanKey(groupId), JSON.stringify(currentGroupModulesPlan)); setCamp(groupId, modalIsCamp); }
+    const inGroup = allStudents.filter(s => s.group_id === groupId);
+    for (const s of inGroup) if (!checkedStudents.includes(s.id)) await db().from('students').update({ group_id: null }).eq('id', s.id);
+    for (const sId of checkedStudents){
+      const st = allStudents.find(x => x.id === sId);
+      if (st && st.group_id !== groupId) await db().from('students').update({ group_id: groupId }).eq('id', sId);
+    }
+    closeGroupModal();
+    await loadAll();
+    const label = modalIsCamp ? 'Кибер каникулы' : 'Группа';
+    toast(idNum ? label + ' «' + name + '» обновлены' : label + ' «' + name + '» созданы', 'success');
+    if (groupId) flashItem('group-' + groupId);
+  });
+}
+
+/* ================= РЕДАКТИРОВАНИЕ / ДОБАВЛЕНИЕ ================= */
+function openEditModal(type, id) {
+  currentEditType = type; currentEditId = id;
+  const content = document.getElementById('edit-modal-content');
+  let item;
+  if (type === 'student') {
+    item = allStudents.find(x => x.id === id); if (!item) return;
+    document.getElementById('edit-modal-title').textContent = 'Редактировать ученика';
+    const opts = allGroups.map(g => '<option value="' + g.id + '" ' + (g.id === item.group_id ? 'selected' : '') + '>' +
+      esc(g.name) + (isCamp(g.id) ? ' 🏖' : '') + (timeRange(g) ? ' · ' + timeRange(g) : '') + '</option>').join('');
+    content.innerHTML =
+      '<label>ФИО:</label><input type="text" id="edit-name" class="rus-only" value="' + esc(item.full_name) + '" maxlength="100">' +
+      '<label>Возраст:</label><input type="number" id="edit-age" min="5" max="16" value="' + item.age + '">' +
+      '<label>Группа:</label><select id="edit-group"><option value="">Без группы</option>' + opts + '</select>' +
+      '<label>Статус:</label><select id="edit-active"><option value="true" ' + (item.active?'selected':'') + '>Активен</option>' +
+      '<option value="false" ' + (!item.active?'selected':'') + '>Неактивен</option></select>';
+  } else if (type === 'tutor') {
+    item = allTutors.find(x => x.id === id); if (!item) return;
+    document.getElementById('edit-modal-title').textContent = 'Редактировать тьютора';
+    content.innerHTML = '<label>ФИО:</label><input type="text" id="edit-name" class="rus-only" value="' + esc(item.full_name) + '" maxlength="100">' +
+      '<label>Специализация:</label><input type="text" id="edit-spec" class="rus-only" value="' + esc(item.specialization || '') + '" maxlength="100">';
+  } else if (type === 'module') {
+    item = allModules.find(x => x.id === id); if (!item) return;
+    document.getElementById('edit-modal-title').textContent = 'Редактировать модуль';
+    content.innerHTML = '<label>Название:</label><input type="text" id="edit-title" value="' + esc(item.title) + '" maxlength="100">';
+  }
+  bindRusOnly(content);
+  openModalEl(document.getElementById('edit-modal'));
+}
+function closeEditModal(){ closeModalEl(document.getElementById('edit-modal')); }
+async function saveEdit(btn) {
+  let dbData = {}, tableName = '';
+  if (currentEditType === 'student') {
+    const name = document.getElementById('edit-name').value.trim();
+    const age = parseInt(document.getElementById('edit-age').value, 10);
+    const gv = document.getElementById('edit-group').value;
+    const group_id = gv ? parseInt(gv, 10) : null;
+    const active = document.getElementById('edit-active').value === 'true';
+    if (!name) return toast('Введите ФИО', 'warn');
+    if (!age || age < 5 || age > 16) return toast('Возраст 5-16', 'warn');
+    dbData = { full_name:name, age, group_id, active }; tableName = 'students';
+  } else if (currentEditType === 'tutor') {
+    const name = document.getElementById('edit-name').value.trim();
+    const spec = document.getElementById('edit-spec').value.trim();
+    if (!name) return toast('Введите ФИО', 'warn');
+    dbData = { full_name:name, specialization:spec }; tableName = 'tutors';
+  } else if (currentEditType === 'module') {
+    const title = document.getElementById('edit-title').value.trim();
+    if (!title) return toast('Введите название', 'warn');
+    dbData = { title }; tableName = 'modules';
+  }
+  await withBusy(btn, async () => {
+    const { error } = await db().from(tableName).update(dbData).eq('id', currentEditId);
+    if (error) return toast('Ошибка БД: ' + error.message, 'error');
+    const keyMap = { students:'student', tutors:'tutor', modules:'module' };
+    closeEditModal(); await loadAll();
+    toast('Изменения сохранены', 'success');
+    flashItem(keyMap[tableName] + '-' + currentEditId);
+  });
+}
+async function addTutor(btn) {
+  const full_name = document.getElementById('t-name').value.trim();
+  const specialization = document.getElementById('t-spec').value.trim();
+  if (!full_name) return toast('Введите ФИО', 'warn');
+  await withBusy(btn, async () => {
+    const { data, error } = await db().from('tutors').insert({ full_name, specialization }).select().single();
+    if (error) return toast('Ошибка БД: ' + error.message, 'error');
+    document.getElementById('t-name').value = ''; document.getElementById('t-spec').value = '';
+    await loadAll(); toast('Тьютор «' + full_name + '» добавлен', 'success');
+    if (data) flashItem('tutor-' + data.id);
+  });
+}
+async function addStudent(btn) {
+  const full_name = document.getElementById('s-name').value.trim();
+  const age = parseInt(document.getElementById('s-age').value, 10);
+  const gv = document.getElementById('s-group').value;
+  const group_id = gv ? parseInt(gv, 10) : null;
+  const enrolled_at = document.getElementById('s-date').value;
+  const active = document.getElementById('s-active').value === 'true';
+  if (!full_name) return toast('Введите ФИО', 'warn');
+  if (!age || age < 5 || age > 16) return toast('Возраст от 5 до 16 лет', 'warn');
+  if (!enrolled_at) return toast('Введите дату', 'warn');
+  await withBusy(btn, async () => {
+    const { data, error } = await db().from('students').insert({ full_name, age, group_id, enrolled_at, active }).select().single();
+    if (error) return toast('Ошибка БД: ' + error.message, 'error');
+    document.getElementById('s-name').value = ''; document.getElementById('s-age').value = '';
+    await loadAll(); toast('Ученик «' + full_name + '» добавлен', 'success');
+    if (data) flashItem('student-' + data.id);
+  });
+}
+async function addModule(btn) {
+  const title = document.getElementById('m-title').value.trim();
+  if (!title) return toast('Введите название', 'warn');
+  await withBusy(btn, async () => {
+    const { data, error } = await db().from('modules').insert({ title, hours: 0 }).select().single();
+    if (error) return toast('Ошибка БД: ' + error.message, 'error');
+    document.getElementById('m-title').value = '';
+    await loadAll(); toast('Модуль «' + title + '» добавлен', 'success');
+    if (data) flashItem('module-' + data.id);
+  });
+}
+
+/* ================= УДАЛЕНИЕ С ОТМЕНОЙ ================= */
+async function deleteStudent(id) {
+  const s = allStudents.find(x => x.id === id); if (!s) return;
+  if (!await askConfirm('Удалить ученика «' + s.full_name + '»? Сразу после удаления действие можно отменить.', 'Удаление ученика')) return;
+  const msRows = allModuleStudents.filter(r => r.student_id === id).map(r => ({...r}));
+  const attSnap = {}; attKeysForStudent(id).forEach(k => { attSnap[k] = lsGet(k); });
+  await animateRemoveByKey('student-' + id);
+  await db().from('module_students').delete().eq('student_id', id);
+  const { error } = await db().from('students').delete().eq('id', id);
+  if (error) return toast('Ошибка БД: ' + error.message, 'error');
+  Object.keys(attSnap).forEach(k => lsDel(k));
+  if (currentProfileStudentId === id){ currentProfileStudentId = null; switchTab('students'); }
+  await loadAll();
+  toast('Ученик «' + s.full_name + '» удалён', 'info', { action:'Отменить', duration:6500, onAction: async () => {
+    const { error:e1 } = await db().from('students').insert({ ...s });
+    if (e1) return toast('Не удалось восстановить: ' + e1.message, 'error');
+    if (msRows.length) await db().from('module_students').insert(msRows);
+    Object.entries(attSnap).forEach(([k,v]) => { if (v != null) lsSet(k,v); });
+    await loadAll(); flashItem('student-' + id); toast('Ученик восстановлен', 'success');
+  }});
+}
+async function deleteTutor(id) {
+  const t = allTutors.find(x => x.id === id); if (!t) return;
+  if (!await askConfirm('Удалить тьютора «' + t.full_name + '»? У его групп тьютор будет снят.', 'Удаление тьютора')) return;
+  const affected = allGroups.filter(g => g.tutor_id === id).map(g => g.id);
+  await animateRemoveByKey('tutor-' + id);
+  await db().from('groups').update({ tutor_id: null }).eq('tutor_id', id);
+  const { error } = await db().from('tutors').delete().eq('id', id);
+  if (error) return toast('Ошибка БД: ' + error.message, 'error');
+  await loadAll();
+  toast('Тьютор «' + t.full_name + '» удалён', 'info', { action:'Отменить', duration:6500, onAction: async () => {
+    const { error:e1 } = await db().from('tutors').insert({ ...t });
+    if (e1) return toast('Не удалось восстановить: ' + e1.message, 'error');
+    for (const gid of affected) await db().from('groups').update({ tutor_id: id }).eq('id', gid);
+    await loadAll(); flashItem('tutor-' + id); toast('Тьютор восстановлен', 'success');
+  }});
+}
+async function deleteGroup(id) {
+  const g = allGroups.find(x => x.id === id); if (!g) return;
+  const camp = isCamp(id);
+  if (!await askConfirm('Удалить ' + (camp ? 'кибер каникулы' : 'группу') + ' «' + g.name + '»? Ученики останутся без группы, табель и план будут удалены.', camp ? 'Удаление кибер каникул' : 'Удаление группы')) return;
+  const studentIds = allStudents.filter(s => s.group_id === id).map(s => s.id);
+  const snap = {};
+  lsKeys().forEach(k => { if (k.startsWith('att_' + id + '_') || k === getModulesPlanKey(id)) snap[k] = lsGet(k); });
+  await animateRemoveByKey('group-' + id);
+  await db().from('students').update({ group_id: null }).eq('group_id', id);
+  const { error } = await db().from('groups').delete().eq('id', id);
+  if (error) return toast('Ошибка БД: ' + error.message, 'error');
+  Object.keys(snap).forEach(k => lsDel(k));
+  lsDel(campKey(id));
+  if (currentProfileGroupId === id){ currentProfileGroupId = null; switchTab('groups'); }
+  await loadAll();
+  toast((camp ? 'Кибер каникулы' : 'Группа') + ' «' + g.name + '» удалены', 'info', { action:'Отменить', duration:6500, onAction: async () => {
+    const { error:e1 } = await db().from('groups').insert({ ...g });
+    if (e1) return toast('Не удалось восстановить: ' + e1.message, 'error');
+    for (const sid of studentIds) await db().from('students').update({ group_id: id }).eq('id', sid);
+    Object.entries(snap).forEach(([k,v]) => { if (v != null) lsSet(k,v); });
+    if (camp) setCamp(id, true);
+    await loadAll(); flashItem('group-' + id); toast('Восстановлено', 'success');
+  }});
+}
+async function deleteModule(id) {
+  const m = allModules.find(x => x.id === id); if (!m) return;
+  if (!await askConfirm('Удалить модуль «' + m.title + '»?', 'Удаление модуля')) return;
+  const msRows = allModuleStudents.filter(r => r.module_id === id).map(r => ({...r}));
+  const affected = allGroups.filter(g => g.module_id === id).map(g => g.id);
+  await animateRemoveByKey('module-' + id);
+  await db().from('module_students').delete().eq('module_id', id);
+  await db().from('groups').update({ module_id: null }).eq('module_id', id);
+  const { error } = await db().from('modules').delete().eq('id', id);
+  if (error) return toast('Ошибка БД: ' + error.message, 'error');
+  await loadAll();
+  toast('Модуль «' + m.title + '» удалён', 'info', { action:'Отменить', duration:6500, onAction: async () => {
+    const { error:e1 } = await db().from('modules').insert({ ...m });
+    if (e1) return toast('Не удалось восстановить: ' + e1.message, 'error');
+    if (msRows.length) await db().from('module_students').insert(msRows);
+    for (const gid of affected) await db().from('groups').update({ module_id: id }).eq('id', gid);
+    await loadAll(); flashItem('module-' + id); toast('Модуль восстановлен', 'success');
+  }});
+}
+
+/* ================= ГЛОБАЛЬНЫЕ СОБЫТИЯ ================= */
+function bindGlobalUI() {
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button');
+    if (!b || b.disabled) return;
+    const r = b.getBoundingClientRect(), size = Math.max(r.width, r.height);
+    const s = document.createElement('span');
+    s.className = 'ripple'; s.style.width = s.style.height = size + 'px';
+    const cx = (e.clientX || r.left + r.width/2), cy = (e.clientY || r.top + r.height/2);
+    s.style.left = (cx - r.left - size/2) + 'px'; s.style.top = (cy - r.top - size/2) + 'px';
+    b.appendChild(s); s.addEventListener('animationend', () => s.remove());
+  }, true);
+  document.addEventListener('click', e => { if (!(e.target.closest && e.target.closest('.ms-combo'))) closeAllModuleCombos(); });
+  window.addEventListener('scroll', () => { const h = document.getElementById('app-header'); if (h) h.classList.toggle('scrolled', window.scrollY > 8); }, { passive:true });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (document.querySelector('#modal-g-modules-plan .ms-combo.open')) return closeAllModuleCombos();
+    if (document.getElementById('confirm-modal').classList.contains('active')) return resolveConfirm(false);
+    if (document.getElementById('edit-modal').classList.contains('active')) return closeEditModal();
+    if (document.getElementById('group-modal').classList.contains('active')) return closeGroupModal();
+  });
+  document.getElementById('group-modal').addEventListener('click', e => { if (e.target.id === 'group-modal') closeGroupModal(); });
+  document.getElementById('edit-modal').addEventListener('click', e => { if (e.target.id === 'edit-modal') closeEditModal(); });
+  document.getElementById('confirm-modal').addEventListener('click', e => { if (e.target.id === 'confirm-modal') resolveConfirm(false); });
+  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-btn').click(); });
+  document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+}
+
+/* ================= ИНИЦИАЛИЗАЦИЯ ================= */
+bindRusOnly(document);
+document.getElementById('s-date').value = fmtDateInput(new Date());
+bindGlobalUI();
+(async () => {
+  try {
+    if (supabaseClient) {
+      const { data } = await withTimeout(supabaseClient.auth.getSession(), 6000);
+      if (data && data.session){ currentUser = data.session.user; await showApp(); }
+    }
+  } catch(e) { /* сервер недоступен — остаёмся на экране входа */ }
+})();
+</script>
+</body>
+</html>
