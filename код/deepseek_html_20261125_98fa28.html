@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIBERone — Учёт</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --kiber-teal:#00c4b3;--teal-deep:#00857a;--kiber-yellow:#ffd200;--amber:#e08a00;
+  --kiber-blue:#0056b3;--electric:#2f7bff;--violet:#7b5cff;--violet-deep:#4a2fd0;
+  --kiber-red:#b12628;--danger:#d64545;--kiber-green:#2e9e5b;--kiber-dark:#242424;
+  --ink-soft:#5c6664;--scrim:rgba(6,42,39,.55);
+  --spring:cubic-bezier(.34,1.56,.64,1);--ease:cubic-bezier(.22,.61,.36,1);
+  --shadow-1:0 2px 10px rgba(0,40,36,.06);--shadow-2:0 6px 20px rgba(0,40,36,.12);
+  --shadow-3:0 14px 40px rgba(0,40,36,.22);
+}
+*{box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:linear-gradient(160deg,#00c4b3 0%,#00a99b 45%,#00857a 100%);
+  background-attachment:fixed;margin:0;padding:20px;color:var(--kiber-dark);min-height:100vh;overflow-x:hidden}
+body.modal-open{overflow:hidden}
+.container{max-width:940px;margin:0 auto;position:relative;z-index:1}
+h2{font-size:22px;color:#fff;border-bottom:3px solid var(--kiber-yellow);display:inline-block;
+  padding-bottom:5px;margin-bottom:15px;font-weight:800;text-shadow:0 2px 12px rgba(0,60,55,.25)}
+.hidden{display:none!important}
+
+#login-screen{background:#fff;max-width:420px;margin:50px auto;padding:30px;border-radius:20px;
+  box-shadow:var(--shadow-3);position:relative;overflow:hidden}
+#login-screen::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;
+  background:linear-gradient(90deg,var(--kiber-teal),var(--kiber-yellow),var(--electric),var(--kiber-teal));
+  background-size:300% 100%;animation:shimmer 5s linear infinite}
+@keyframes shimmer{to{background-position:-200% 0}}
+.welcome-title{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;
+  font-size:22px;font-weight:800;margin:0 0 25px;text-align:center}
+#login-screen label{display:block;margin-bottom:15px;font-weight:600;font-size:14px}
+#login-screen input{width:100%;margin-top:5px}
+#login-screen button{width:100%;margin-top:10px}
+.error{color:var(--kiber-red);font-weight:600;margin-top:10px;display:none;font-size:14px;text-align:center}
+
+.app-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+  background:rgba(255,255,255,.93);backdrop-filter:blur(10px);padding:15px 20px;border-radius:15px;
+  margin-bottom:20px;box-shadow:var(--shadow-1);position:sticky;top:10px;z-index:60}
+.app-header p{margin:0;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.app-header button{background:var(--kiber-dark);color:#fff;padding:8px 15px;font-weight:600}
+.app-header button:hover{background:var(--kiber-red)}
+.conn-badge{font-size:11px;font-weight:800;letter-spacing:.5px;padding:4px 10px;border-radius:20px;
+  display:inline-flex;align-items:center;gap:6px;text-transform:uppercase;background:#e6f9f8;color:#00857a}
+.conn-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--kiber-green)}
+.conn-badge.conn-err{background:#ffe5e5;color:var(--kiber-red)}
+.conn-badge.conn-err::before{background:var(--kiber-red)}
+
+.tabs{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.tab-btn{font-size:15px;font-weight:700;padding:10px 20px;background:#fff;color:var(--teal-deep);
+  border:2px solid transparent;border-radius:30px;transition:all .2s var(--ease);box-shadow:var(--shadow-1);
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.tab-btn:hover{background:#e6f9f8}
+.tab-btn.active{background:var(--kiber-yellow);color:var(--kiber-dark);border-color:var(--kiber-yellow);
+  box-shadow:0 6px 16px rgba(255,210,0,.45)}
+
+.section,.search-box{background:#fff;padding:20px;border-radius:15px;margin-bottom:20px;box-shadow:var(--shadow-1)}
+input,select,button{font-family:'Montserrat',sans-serif;font-size:14px;padding:10px 12px;margin:4px 0;
+  border-radius:10px;border:2px solid #e0e0e0;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus{border-color:var(--kiber-teal);box-shadow:0 0 0 4px rgba(0,196,179,.16)}
+.section input,.section select{width:100%;max-width:300px;margin-right:10px}
+button{cursor:pointer;font-weight:600;border:none;transition:all .2s var(--ease)}
+button:disabled{cursor:wait;opacity:.6}
+.busy{color:transparent!important;pointer-events:none;position:relative}
+.busy::after{content:'';position:absolute;inset:0;margin:auto;width:18px;height:18px;
+  border:3px solid rgba(0,0,0,.18);border-top-color:var(--kiber-dark);border-radius:50%;
+  animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.add-btn{background:var(--kiber-yellow);color:var(--kiber-dark);padding:10px 20px;border-radius:20px;
+  box-shadow:0 4px 12px rgba(255,210,0,.35)}
+.add-btn:hover{background:#e6bd00;transform:translateY(-2px)}
+.btn-camp{background:linear-gradient(135deg,#ffb020,#e08a00);color:#fff;padding:10px 20px;border-radius:20px}
+.btn-camp:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.del-btn{background:#ffe5e5;color:var(--kiber-red);padding:6px 12px;border-radius:8px}
+.del-btn:hover{background:var(--kiber-red);color:#fff}
+.mini-btn{background:#eef4f3;color:var(--ink-soft);padding:6px 10px;border-radius:8px;font-size:12px;font-weight:800}
+.mini-btn:hover{background:var(--kiber-teal);color:#fff}
+
+.item{margin-bottom:15px}
+.item-header{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:15px;
+  background:#fff;border-radius:15px;box-shadow:var(--shadow-1);flex-wrap:wrap;gap:10px}
+.item-header:hover{box-shadow:var(--shadow-2);transform:translateY(-2px)}
+.item-name{flex:1;font-weight:800;font-size:16px;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.item-actions{display:flex;gap:8px;margin-left:auto}
+.item.item-inactive{opacity:.62}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+.dot-on{background:var(--kiber-green);box-shadow:0 0 8px rgba(46,158,91,.6)}
+.dot-off{background:#b9c2c0}
+.tag-badge{background:#e6f9f8;color:#00857a;font-size:11px;padding:2px 8px;border-radius:10px;
+  font-weight:700;border:1px solid #b7ebe6;white-space:nowrap}
+.tag-badge.camp-badge{background:#fff1d6;color:#a06a00;border-color:#ffd98a}
+.tag-badge.time-badge{background:#e8f0ff;color:#0056b3;border-color:#bcd4ff}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:var(--scrim);z-index:1000;
+  justify-content:center;align-items:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;padding:30px;border-radius:20px;width:92%;max-width:560px;max-height:90vh;
+  overflow-y:auto;box-shadow:var(--shadow-3)}
+.modal h3{margin-top:0;font-size:22px;margin-bottom:20px;font-weight:800}
+.modal label{display:block;margin-top:15px;font-weight:600;font-size:14px}
+.modal input,.modal select{width:100%;margin-top:5px}
+.modal-actions{margin-top:25px;display:flex;justify-content:flex-end;gap:10px}
+.btn-save{background:var(--kiber-yellow);color:var(--kiber-dark);padding:12px 25px;border-radius:30px;font-size:16px}
+.btn-save:hover{background:#e6bd00}
+.btn-cancel{background:#eee;color:var(--kiber-dark);padding:12px 25px;border-radius:30px;font-size:16px}
+.btn-cancel:hover{background:#ddd}
+.btn-danger{background:linear-gradient(135deg,#d64545,#b12628);color:#fff;padding:12px 25px;border-radius:30px;font-size:16px}
+#confirm-modal .modal{text-align:center;max-width:420px}
+#confirm-message{color:var(--ink-soft);font-weight:600;line-height:1.5;margin:0}
+
+.attendance-table-wrapper{overflow-x:auto;border:1px solid #ccc;border-radius:8px;background:#fff}
+.attendance-table{width:100%;border-collapse:collapse;text-align:center;font-size:13px}
+.attendance-table th,.attendance-table td{border:1px solid #aaa;padding:4px;height:36px;min-width:52px}
+.attendance-table th{background:#e6f9f8;color:var(--teal-deep);font-weight:900;border-bottom:2px solid var(--kiber-teal)}
+.attendance-table .student-name-cell{text-align:left;padding-left:10px;font-weight:600;min-width:180px;
+  background:#f9f9f9;position:sticky;left:0;z-index:10;border-right:2px solid #999}
+.attendance-table .cell-input{width:100%;height:100%;border:none;background:transparent;text-align:center;
+  font-size:16px;font-weight:800;text-transform:uppercase;outline:none;margin:0;padding:0;
+  color:var(--kiber-dark);border-radius:6px}
+.cell-input.mark-plus{color:#1d7a43;background:rgba(46,158,91,.13)}
+.cell-input.mark-n{color:var(--kiber-red);background:rgba(177,38,40,.1)}
+.cell-input.mark-b{color:#b06a00;background:rgba(224,138,0,.13)}
+.cell-input.mark-o{color:var(--kiber-blue);background:rgba(47,123,255,.1)}
+
+.empty-state{background:#fff;border-radius:20px;padding:40px 25px;text-align:center;
+  box-shadow:var(--shadow-1);color:#888;font-weight:600}
+.empty-title{font-weight:800;font-size:17px;color:var(--kiber-dark);margin-top:12px}
+.empty-hint{font-size:13px;margin-top:6px}
+
+#toasts{position:fixed;right:18px;bottom:18px;z-index:1300;display:flex;flex-direction:column;
+  gap:10px;max-width:min(380px,calc(100vw - 36px))}
+.toast{--tcolor:var(--kiber-teal);background:#fff;border-left:4px solid var(--tcolor);border-radius:14px;
+  box-shadow:var(--shadow-3);padding:12px 14px;display:flex;align-items:center;gap:10px;
+  position:relative;overflow:hidden;font-size:14px;font-weight:600}
+.toast-success{--tcolor:var(--kiber-green)}.toast-error{--tcolor:var(--danger)}
+.toast-info{--tcolor:var(--electric)}.toast-warn{--tcolor:var(--amber)}
+.toast-close{background:transparent;color:#9aa5a3;padding:4px 6px;font-size:13px;flex-shrink:0;margin:0}
+.toast-msg{flex:1;line-height:1.35}
+
+.profile-back-btn{background:var(--kiber-teal);color:#fff;padding:10px 20px;border-radius:30px;
+  font-size:15px;margin-bottom:20px;display:inline-block}
+.profile-header{display:flex;align-items:center;gap:18px;margin-bottom:25px;flex-wrap:wrap}
+.profile-avatar{width:72px;height:72px;border-radius:50%;background:var(--kiber-yellow);
+  color:var(--kiber-dark);font-weight:900;font-size:28px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;box-shadow:0 6px 16px rgba(255,210,0,.45)}
+.profile-name{font-size:24px;font-weight:800;color:var(--kiber-dark);margin:0}
+.profile-status{display:inline-block;margin-top:6px;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700}
+.status-active{background:#e6f9f8;color:#00857a}
+.status-inactive{background:#ffe5e5;color:var(--kiber-red)}
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:25px}
+.profile-card{background:#f9fbfa;border-radius:14px;padding:18px;border-left:4px solid var(--kiber-teal)}
+.profile-card .label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:6px}
+.profile-card .value{font-size:16px;font-weight:700;color:var(--kiber-dark)}
+.plan-row{padding:10px;border-bottom:1px solid #eee;display:flex;flex-direction:column;gap:5px}
+.plan-chip{font-size:11px;font-weight:800;padding:2px 10px;border-radius:12px;white-space:nowrap}
+.chip-teal{background:#e6f9f8;color:#00857a}
+.chip-green{background:#e4f5ea;color:var(--kiber-green)}
+.chip-blue{background:#e8f0ff;color:var(--kiber-blue)}
+.chip-gray{background:#eef1f0;color:#8a9492}
+.group-student-link{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;
+  background:#f9fbfa;border-radius:10px;margin-bottom:8px;cursor:pointer;font-weight:600}
+.group-student-link:hover{background:#e6f9f8}
+
+@media(max-width:640px){body{padding:12px}.section,.search-box{padding:15px}
+  .modal{padding:18px;width:96%}#toasts{right:12px;left:12px;max-width:0}.tab-btn{padding:9px 14px;font-size:13px}}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- ЛОГИН -->
+  <div id="login-screen">
+    <div class="welcome-title"><span>Добро пожаловать в</span><span style="color:var(--kiber-teal);font-weight:900;font-size:22px">KIBERone</span><span>!</span></div>
+    <label>Email: <input type="email" id="login-email" placeholder="admin@bel.com" maxlength="100"></label>
+    <label>Пароль: <input type="password" id="login-password" maxlength="100"></label>
+    <button id="login-btn" class="btn-save" onclick="login(this)">Войти</button>
+    <p id="login-error" class="error"></p>
+  </div>
+
+  <!-- ПРИЛОЖЕНИЕ -->
+  <div id="app-screen" class="hidden">
+    <div class="app-header">
+      <p><span id="user-info"></span><span id="conn-badge" class="conn-badge">API</span></p>
+      <button onclick="logout()">Выйти</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="students" onclick="switchTab('students')">Ученики</button>
+      <button class="tab-btn" data-tab="groups" onclick="switchTab('groups')">Группы</button>
+      <button class="tab-btn" data-tab="tutors" onclick="switchTab('tutors')">Тьюторы</button>
+      <button class="tab-btn" data-tab="modules" onclick="switchTab('modules')">Модули</button>
+    </div>
+
+    <!-- УЧЕНИКИ -->
+    <div id="screen-students" class="screen active">
+      <h2>Ученики</h2>
+      <div class="section">
+        <input id="s-name" placeholder="ФИО: Фамилия Имя Отчество" maxlength="100">
+        <input id="s-birth" type="date" title="Дата рождения" onchange="onBirthChange(this)">
+        <span id="s-birth-hint" style="font-size:12px;font-weight:800;color:var(--teal-deep)"></span>
+        <input id="s-date" type="date" title="Дата зачисления" onchange="rejectFutureDate(this,'Дата зачисления')">
+        <select id="s-active"><option value="true">Активен</option><option value="false">Неактивен</option></select>
+        <button class="add-btn" onclick="addStudent(this)">Добавить</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-student" placeholder="Поиск ученика: ФИО, возраст, группа…"
+               oninput="renderStudents()" style="width:100%;margin:0" maxlength="100">
+      </div>
+      <div id="students-list"></div>
+    </div>
+
+    <!-- ПРОФИЛЬ УЧЕНИКА -->
+    <div id="screen-student-profile" class="screen" style="display:none">
+      <button class="profile-back-btn" onclick="closeStudentProfile()">← Назад к ученикам</button>
+      <div id="student-profile-content"></div>
+    </div>
+
+    <!-- ГРУППЫ -->
+    <div id="screen-groups" class="screen" style="display:none">
+      <h2>Группы</h2>
+      <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="add-btn" onclick="openGroupModal()">+ Создать новую группу</button>
+        <button class="btn-camp" onclick="openGroupModal(null,true)">🏖 Добавить кибер каникулы</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-group" placeholder="Поиск: название, тьютор, время…"
+               oninput="renderGroups()" style="width:100%;margin:0" maxlength="100">
+      </div>
+      <div id="groups-list"></div>
+      <h2 style="border-bottom-color:#ffb020;margin-top:26px">🏖 Кибер каникулы</h2>
+      <div id="camps-list"></div>
+    </div>
+
+    <!-- ПРОФИЛЬ ГРУППЫ -->
+    <div id="screen-group-profile" class="screen" style="display:none">
+      <button class="profile-back-btn" onclick="closeGroupProfile()">← Назад к группам</button>
+      <div id="group-profile-content"></div>
+    </div>
+
+    <!-- ТЬЮТОРЫ -->
+    <div id="screen-tutors" class="screen" style="display:none">
+      <h2>Тьюторы</h2>
+      <div class="section">
+        <input id="t-name" placeholder="ФИО: Фамилия Имя Отчество" maxlength="100">
+        <input id="t-spec" placeholder="Специализация" maxlength="100">
+        <button class="add-btn" onclick="addTutor(this)">Добавить</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-tutor" placeholder="Поиск: ФИО, специализация…"
+               oninput="renderTutors()" style="width:100%;margin:0" maxlength="100">
+      </div>
+      <div id="tutors-list"></div>
+    </div>
+
+    <!-- МОДУЛИ -->
+    <div id="screen-modules" class="screen" style="display:none">
+      <h2>Модули</h2>
+      <div class="section">
+        <input id="m-title" placeholder="Название" maxlength="100">
+        <input id="m-hours" type="number" placeholder="Часы (необязательно)" min="0" max="999">
+        <button class="add-btn" onclick="addModule(this)">Добавить</button>
+      </div>
+      <div class="search-box">
+        <input type="search" id="search-module" placeholder="Поиск: название…"
+               oninput="renderModules()" style="width:100%;margin:0" maxlength="100">
+      </div>
+      <div id="modules-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА ГРУППЫ -->
+<div id="group-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Создать группу</h3>
+    <div id="modal-camp-note" style="background:#fff1d6;color:#a06a00;border:1px solid #ffd98a;
+         border-radius:12px;padding:10px;font-weight:700;font-size:13px;margin-bottom:6px;display:none">
+      🏖 Кибер каникулы: занятия каждый день.</div>
+    <input type="hidden" id="modal-group-id">
+    <label>Название:</label><input type="text" id="modal-g-name" maxlength="100">
+    <label>Уровень (1-4):</label>
+    <select id="modal-g-level"><option value="1">1</option><option value="2">2</option>
+      <option value="3">3</option><option value="4">4</option></select>
+    <div id="modal-day-field"><label>День недели:</label>
+      <select id="modal-g-day"><option>Понедельник</option><option>Вторник</option>
+        <option>Среда</option><option>Четверг</option><option>Пятница</option>
+        <option>Суббота</option><option>Воскресенье</option></select></div>
+    <label>Время (с - до):</label>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:5px">
+      <input type="time" id="modal-g-start" style="width:50%;margin:0">
+      <span>—</span>
+      <input type="time" id="modal-g-end" style="width:50%;margin:0">
+    </div>
+    <label>Тьютор:</label><select id="modal-g-tutor"></select>
+    <label style="margin-top:20px;border-top:1px solid #ddd;padding-top:10px">Ученики в группе:</label>
+    <div id="modal-g-students" style="max-height:250px;overflow-y:auto;border:2px solid #e3ecea;
+         border-radius:14px;padding:8px;margin-top:8px"></div>
+    <div id="modal-error" class="error"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeGroupModal()">Отмена</button>
+      <button class="btn-save" onclick="saveGroup(this)">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА РЕДАКТИРОВАНИЯ -->
+<div id="edit-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 id="edit-modal-title">Редактировать</h3>
+    <div id="edit-modal-content"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Отмена</button>
+      <button class="btn-save" onclick="saveEdit(this)">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ПОДТВЕРЖДЕНИЕ -->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 id="confirm-title">Подтвердите действие</h3>
+    <p id="confirm-message"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="resolveConfirm(false)">Отмена</button>
+      <button class="btn-danger" onclick="resolveConfirm(true)">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* ================= КОНФИГ API ================= */
+const API_URL = 'http://localhost:3000/api';
+
+async function api(path, opts = {}) {
+  const res = await fetch(API_URL + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  });
+  const txt = await res.text();
+  if (!res.ok) throw new Error(txt || ('HTTP ' + res.status));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+
+/* ================= СОСТОЯНИЕ ================= */
+let currentUser = null;
+let allStudents = [], allGroups = [], allTutors = [], allModules = [];
+let currentEditType = null, currentEditId = null;
+let currentProfileStudentId = null, currentProfileGroupId = null;
+let modalIsCamp = false;
+let confirmResolver = null;
+
+const dayMap = { 'Понедельник':1,'Вторник':2,'Среда':3,'Четверг':4,'Пятница':5,'Суббота':6,'Воскресенье':0 };
+const WD_SHORT = ['вс','пн','вт','ср','чт','пт','сб'];
+const MO_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+
+/* ================= УТИЛИТЫ ================= */
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+function fmtRu(d){ return d ? String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear() : '—'; }
+function parseLocalDate(s){ if(!s) return null; const p = String(s).split('-').map(Number); if(p.length<3||!p[0]) return null; return new Date(p[0], p[1]-1, p[2]); }
+function fmtTime(t){ if(!t) return ''; const m = String(t).match(/^(\d{1,2}):(\d{2})/); return m ? m[1].padStart(2,'0')+':'+m[2] : String(t); }
+function timeRange(g){ const a = fmtTime(g.time_start), b = fmtTime(g.time_end); if(!a && !b) return ''; return (a||'—')+'–'+(b||'—'); }
+function todayStart(){ const t = new Date(); t.setHours(0,0,0,0); return t; }
+function calcAge(birth){
+  const b = parseLocalDate(String(birth==null?'':birth).slice(0,10));
+  if (!b || isNaN(b.getTime())) return null;
+  const t = new Date();
+  let age = t.getFullYear() - b.getFullYear();
+  const m = t.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--;
+  return age < 0 ? null : age;
+}
+function yearsWord(n){ const d10=n%10,d100=n%100; if(d10===1&&d100!==11) return 'год'; if(d10>=2&&d10<=4&&(d100<12||d100>14)) return 'года'; return 'лет'; }
+function ageText(b){ const a = calcAge(b); return a == null ? '—' : a+' '+yearsWord(a); }
+function birthHintText(v){ const a = calcAge(v); return a == null ? '' : 'Возраст: '+a+' '+yearsWord(a); }
+function validBirth(v){
+  if (!v) return {ok:false,msg:'Введите дату рождения'};
+  const d = parseLocalDate(v);
+  if (!d) return {ok:false,msg:'Некорректная дата рождения'};
+  if (d > todayStart()) return {ok:false,msg:'Дата рождения не может быть позже сегодняшнего дня'};
+  const a = calcAge(d);
+  if (a == null || a < 5 || a > 16) return {ok:false,msg:'Возраст должен быть от 5 до 16 лет'};
+  return {ok:true,date:d,age:a};
+}
+function onBirthChange(input){
+  if (input.value){
+    const d = parseLocalDate(input.value);
+    if (!d || d > todayStart()){ input.value=''; document.getElementById('s-birth-hint').textContent=''; return toast('Дата рождения не может быть позже сегодняшнего дня','warn'); }
+  }
+  document.getElementById('s-birth-hint').textContent = birthHintText(input.value);
+}
+function rejectFutureDate(input, label){
+  if (!input.value) return;
+  const d = parseLocalDate(input.value);
+  if (d && d > todayStart()){ input.value=''; toast(label+' не может быть позже сегодняшнего дня','warn'); }
+}
+function withBusy(btn, fn){
+  if (btn && btn.dataset.busy) return;
+  if (btn){ btn.dataset.busy='1'; btn.classList.add('busy'); btn.disabled = true; }
+  return Promise.resolve().then(fn).finally(() => { if (btn){ delete btn.dataset.busy; btn.classList.remove('busy'); btn.disabled = false; } });
+}
+function setConn(state, label){
+  const b = document.getElementById('conn-badge');
+  if (!b) return;
+  b.classList.toggle('conn-err', state === 'err');
+  b.textContent = label;
+}
+function toast(msg, type='success', opts={}){
+  const wrap = document.getElementById('toasts');
+  while (wrap.children.length >= 4) wrap.firstChild.remove();
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.innerHTML = '<div class="toast-msg">'+esc(msg)+'</div><button class="toast-close">✕</button>';
+  const dismiss = () => el.remove();
+  el.querySelector('.toast-close').onclick = dismiss;
+  wrap.appendChild(el);
+  setTimeout(dismiss, opts.duration || 4200);
+}
+function openModalEl(el){ el.classList.add('active'); document.body.classList.add('modal-open'); }
+function closeModalEl(el){ el.classList.remove('active'); if (!document.querySelector('.modal-overlay.active')) document.body.classList.remove('modal-open'); }
+function askConfirm(msg, title){
+  return new Promise(res => {
+    confirmResolver = res;
+    document.getElementById('confirm-title').textContent = title || 'Подтвердите действие';
+    document.getElementById('confirm-message').textContent = msg;
+    openModalEl(document.getElementById('confirm-modal'));
+  });
+}
+function resolveConfirm(v){ const r = confirmResolver; confirmResolver = null; closeModalEl(document.getElementById('confirm-modal')); if (r) r(v); }
+function emptyState(title, hint){
+  return '<div class="empty-state"><div class="empty-title">'+esc(title)+'</div><div class="empty-hint">'+esc(hint)+'</div></div>';
+}
+
+/* ================= АВТОРИЗАЦИЯ ================= */
+async function login(btn){
+  return withBusy(btn, async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    errEl.style.display = 'none';
+    try {
+      const user = await api('/login', { method:'POST', body: JSON.stringify({ email, password: pass }) });
+      currentUser = user;
+      lsSet('currentUser', JSON.stringify(user));
+      await loadAll();
+      showApp();
+    } catch (e) {
+      errEl.textContent = 'Ошибка входа: ' + e.message;
+      errEl.style.display = 'block';
+    }
+  });
+}
+function logout(){
+  currentUser = null; lsDel('currentUser');
+  document.getElementById('app-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-password').value = '';
+}
+function showApp(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-screen').classList.remove('hidden');
+  document.getElementById('user-info').textContent = currentUser ? (currentUser.email || currentUser.login || 'admin') : '';
+}
+
+/* ================= ЗАГРУЗКА ================= */
+async function loadAll(){
+  try {
+    const [students, groups, tutors, modules] = await Promise.all([
+      api('/students'), api('/groups'), api('/tutors'), api('/modules')
+    ]);
+    allStudents = students;
+    allGroups = groups;
+    allTutors = tutors;
+    allModules = modules;
+    setConn('ok', 'API');
+  } catch (e) {
+    setConn('err', 'API error');
+    toast('Не удалось загрузить данные: ' + e.message, 'error', { duration: 6000 });
+  }
+}
+
+/* ================= ВКЛАДКИ ================= */
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+  document.getElementById('screen-' + name).style.display = 'block';
+  if (name === 'students') renderStudents();
+  if (name === 'groups') { renderGroups(); renderCamps(); }
+  if (name === 'tutors') renderTutors();
+  if (name === 'modules') renderModules();
+}
+
+/* ================= УЧЕНИКИ ================= */
+function renderStudents(){
+  const q = (document.getElementById('search-student').value || '').toLowerCase().trim();
+  const box = document.getElementById('students-list');
+  let list = allStudents.slice();
+  if (q) list = list.filter(s => (s.name||'').toLowerCase().includes(q));
+  if (!list.length) { box.innerHTML = emptyState('Учеников нет', 'Добавьте первого ученика'); return; }
+  box.innerHTML = list.map(s => `
+    <div class="item ${s.active ? '' : 'item-inactive'}">
+      <div class="item-header" onclick="openStudentProfile(${s.id})">
+        <div class="item-name">
+          <span class="dot ${s.active ? 'dot-on' : 'dot-off'}"></span>
+          ${esc(s.name || 'Без имени')}
+          <span class="tag-badge">${esc(ageText(s.birth))}</span>
+          ${s.birth ? '<span class="tag-badge">'+esc(fmtRu(parseLocalDate(s.birth)))+'</span>' : ''}
+        </div>
+        <div class="item-actions" onclick="event.stopPropagation()">
+          <button class="mini-btn" onclick="openEditStudent(${s.id})">✎</button>
+          <button class="del-btn" onclick="deleteStudent(${s.id})">Удалить</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function addStudent(btn){
+  return withBusy(btn, async () => {
+    const name = document.getElementById('s-name').value.trim();
+    const birth = document.getElementById('s-birth').value;
+    const enroll = document.getElementById('s-date').value;
+    const active = document.getElementById('s-active').value === 'true';
+    if (!name) return toast('Введите ФИО','warn');
+    const bv = validBirth(birth);
+    if (!bv.ok) return toast(bv.msg,'warn');
+    try {
+      const { id } = await api('/students', { method:'POST', body: JSON.stringify({ name, birth, enroll, active }) });
+      allStudents.push({ id, name, birth, enroll, active });
+      document.getElementById('s-name').value = '';
+      document.getElementById('s-birth').value = '';
+      document.getElementById('s-date').value = '';
+      document.getElementById('s-birth-hint').textContent = '';
+      renderStudents();
+      toast('Ученик добавлен','success');
+    } catch (e) { toast('Ошибка: ' + e.message, 'error'); }
+  });
+}
+async function deleteStudent(id){
+  const ok = await askConfirm('Удалить ученика?', 'Удаление');
+  if (!ok) return;
+  try {
+    await api('/students/' + id, { method:'DELETE' });
+    allStudents = allStudents.filter(s => s.id !== id);
+    renderStudents();
+    toast('Удалено','success');
+  } catch (e) { toast('Ошибка: ' + e.message, 'error'); }
+}
+function openEditStudent(id){
+  const s = allStudents.find(x => x.id === id);
+  if (!s) return;
+  currentEditType = 'student'; currentEditId = id;
+  document.getElementById('edit-modal-title').textContent = 'Редактировать ученика';
+  document.getElementById('edit-modal-content').innerHTML = `
+    <label>ФИО:</label><input type="text" id="edit-name" value="${esc(s.name||'')}" maxlength="100">
+    <label>Дата рождения:</label><input type="date" id="edit-birth" value="${esc(s.birth||'')}">
+    <span id="edit-birth-hint" style="font-size:12px;font-weight:800;color:var(--teal-deep)">${birthHintText(s.birth)}</span>
+    <label>Дата зачисления:</label><input type="date" id="edit-enroll" value="${esc(s.enroll||'')}">
+    <label>Статус:</label><select id="edit-active">
+      <option value="true"${s.active?' selected':''}>Активен</option>
+      <option value="false"${!s.active?' selected':''}>Неактивен</option></select>`;
+  openModalEl(document.getElementById('edit-modal'));
+}
+function openStudentProfile(id){
+  const s = allStudents.find(x => x.id === id);
+  if (!s) return;
+  currentProfileStudentId = id;
+  document.querySelectorAll('.screen').forEach(x => x.style.display = 'none');
+  document.getElementById('screen-student-profile').style.display = 'block';
+  const groups = allGroups.filter(g => (g.student_ids||[]).includes(id));
+  document.getElementById('student-profile-content').innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar">${esc((s.name||'?').charAt(0).toUpperCase())}</div>
+      <div><h2 class="profile-name" style="color:var(--kiber-dark);border:none">${esc(s.name||'Без имени')}</h2>
+        <span class="profile-status ${s.active?'status-active':'status-inactive'}">${s.active?'Активен':'Неактивен'}</span></div>
+    </div>
+    <div class="profile-grid">
+      <div class="profile-card"><div class="label">Возраст</div><div class="value">${esc(ageText(s.birth))}</div></div>
+      <div class="profile-card"><div class="label">Дата рождения</div><div class="value">${s.birth?esc(fmtRu(parseLocalDate(s.birth))):'—'}</div></div>
+      <div class="profile-card"><div class="label">Зачислен</div><div class="value">${s.enroll?esc(fmtRu(parseLocalDate(s.enroll))):'—'}</div></div>
+      <div class="profile-card"><div class="label">Групп</div><div class="value">${groups.length}</div></div>
+    </div>
+    <h3 style="font-size:17px;margin-bottom:12px">Группы</h3>
+    ${groups.length ? groups.map(g => `<div class="group-student-link" onclick="openGroupProfile(${g.id})">
+        <span>${esc(g.name)}</span><span class="tag-badge">Ур. ${g.level}</span></div>`).join('')
+      : '<p style="color:#888">Не состоит в группах</p>'}`;
+}
+function closeStudentProfile(){
+  currentProfileStudentId = null;
+  document.getElementById('screen-student-profile').style.display = 'none';
+  document.getElementById('screen-students').style.display = 'block';
+}
+
+/* ================= ТЬЮТОРЫ ================= */
+function renderTutors(){
+  const q = (document.getElementById('search-tutor').value || '').toLowerCase().trim();
+  const box = document.getElementById('tutors-list');
+  let list = allTutors.slice();
+  if (q) list = list.filter(t => (t.name||'').toLowerCase().includes(q) || (t.spec||'').toLowerCase().includes(q));
+  if (!list.length) { box.innerHTML = emptyState('Тьюторов нет','Добавьте первого тьютора'); return; }
+  box.innerHTML = list.map(t => `
+    <div class="item"><div class="item-header">
+      <div class="item-name">${esc(t.name||'Без имени')}
+        ${t.spec ? '<span class="tag-badge">'+esc(t.spec)+'</span>' : ''}</div>
+      <div class="item-actions">
+        <button class="mini-btn" onclick="openEditTutor(${t.id})">✎</button>
+        <button class="del-btn" onclick="deleteTutor(${t.id})">Удалить</button>
+      </div></div></div>`).join('');
+}
+async function addTutor(btn){
+  return withBusy(btn, async () => {
+    const name = document.getElementById('t-name').value.trim();
+    const spec = document.getElementById('t-spec').value.trim();
+    if (!name) return toast('Введите ФИО','warn');
+    try {
+      const { id } = await api('/tutors', { method:'POST', body: JSON.stringify({ name, spec }) });
+      allTutors.push({ id, name, spec });
+      document.getElementById('t-name').value = '';
+      document.getElementById('t-spec').value = '';
+      renderTutors();
+      toast('Тьютор добавлен','success');
+    } catch (e) { toast('Ошибка: ' + e.message,'error'); }
+  });
+}
+async function deleteTutor(id){
+  const ok = await askConfirm('Удалить тьютора?','Удаление'); if (!ok) return;
+  try { await api('/tutors/'+id,{method:'DELETE'}); allTutors = allTutors.filter(t=>t.id!==id); renderTutors(); toast('Удалено','success'); }
+  catch(e){ toast('Ошибка: '+e.message,'error'); }
+}
+function openEditTutor(id){
+  const t = allTutors.find(x => x.id === id); if (!t) return;
+  currentEditType='tutor'; currentEditId=id;
+  document.getElementById('edit-modal-title').textContent='Редактировать тьютора';
+  document.getElementById('edit-modal-content').innerHTML = `
+    <label>ФИО:</label><input type="text" id="edit-name" value="${esc(t.name||'')}" maxlength="100">
+    <label>Специализация:</label><input type="text" id="edit-spec" value="${esc(t.spec||'')}" maxlength="100">`;
+  openModalEl(document.getElementById('edit-modal'));
+}
+
+/* ================= МОДУЛИ ================= */
+function renderModules(){
+  const q = (document.getElementById('search-module').value || '').toLowerCase().trim();
+  const box = document.getElementById('modules-list');
+  let list = allModules.slice();
+  if (q) list = list.filter(m => (m.title||'').toLowerCase().includes(q));
+  if (!list.length) { box.innerHTML = emptyState('Модулей нет','Добавьте первый модуль'); return; }
+  box.innerHTML = list.map(m => `
+    <div class="item"><div class="item-header">
+      <div class="item-name">${esc(m.title||'Без названия')}
+        ${m.hours ? '<span class="tag-badge">'+m.hours+' ч</span>' : ''}</div>
+      <div class="item-actions">
+        <button class="mini-btn" onclick="openEditModule(${m.id})">✎</button>
+        <button class="del-btn" onclick="deleteModule(${m.id})">Удалить</button>
+      </div></div></div>`).join('');
+}
+async function addModule(btn){
+  return withBusy(btn, async () => {
+    const title = document.getElementById('m-title').value.trim();
+    const hours = document.getElementById('m-hours').value;
+    if (!title) return toast('Введите название','warn');
+    try {
+      const { id } = await api('/modules', { method:'POST', body: JSON.stringify({ title, hours: hours || null }) });
+      allModules.push({ id, title, hours: hours ? Number(hours) : null });
+      document.getElementById('m-title').value = '';
+      document.getElementById('m-hours').value = '';
+      renderModules();
+      toast('Модуль добавлен','success');
+    } catch (e) { toast('Ошибка: ' + e.message,'error'); }
+  });
+}
+async function deleteModule(id){
+  const ok = await askConfirm('Удалить модуль?','Удаление'); if (!ok) return;
+  try { await api('/modules/'+id,{method:'DELETE'}); allModules = allModules.filter(m=>m.id!==id); renderModules(); toast('Удалено','success'); }
+  catch(e){ toast('Ошибка: '+e.message,'error'); }
+}
+function openEditModule(id){
+  const m = allModules.find(x => x.id === id); if (!m) return;
+  currentEditType='module'; currentEditId=id;
+  document.getElementById('edit-modal-title').textContent='Редактировать модуль';
+  document.getElementById('edit-modal-content').innerHTML = `
+    <label>Название:</label><input type="text" id="edit-title" value="${esc(m.title||'')}" maxlength="100">
+    <label>Часы:</label><input type="number" id="edit-hours" value="${m.hours||''}" min="0" max="999">`;
+  openModalEl(document.getElementById('edit-modal'));
+}
+
+/* ================= СОХРАНЕНИЕ РЕДАКТИРОВАНИЯ ================= */
+async function saveEdit(btn){
+  return withBusy(btn, async () => {
+    try {
+      if (currentEditType === 'student'){
+        const name = document.getElementById('edit-name').value.trim();
+        const birth = document.getElementById('edit-birth').value;
+        const enroll = document.getElementById('edit-enroll').value;
+        const active = document.getElementById('edit-active').value === 'true';
+        const bv = validBirth(birth);
+        if (!bv.ok) return toast(bv.msg,'warn');
+        await api('/students/'+currentEditId, { method:'PUT', body: JSON.stringify({ name, birth, enroll, active }) });
+        const s = allStudents.find(x => x.id === currentEditId);
+        if (s) Object.assign(s, { name, birth, enroll, active });
+      }
+      if (currentEditType === 'tutor'){
+        const name = document.getElementById('edit-name').value.trim();
+        const spec = document.getElementById('edit-spec').value.trim();
+        await api('/tutors/'+currentEditId, { method:'PUT', body: JSON.stringify({ name, spec }) });
+        const t = allTutors.find(x => x.id === currentEditId);
+        if (t) Object.assign(t, { name, spec });
+      }
+      if (currentEditType === 'module'){
+        const title = document.getElementById('edit-title').value.trim();
+        const hours = document.getElementById('edit-hours').value;
+        await api('/modules/'+currentEditId, { method:'PUT', body: JSON.stringify({ title, hours: hours || null }) });
+        const m = allModules.find(x => x.id === currentEditId);
+        if (m) Object.assign(m, { title, hours: hours ? Number(hours) : null });
+      }
+      closeEditModal();
+      renderStudents(); renderTutors(); renderModules(); renderGroups(); renderCamps();
+      toast('Сохранено','success');
+    } catch (e) { toast('Ошибка: ' + e.message,'error'); }
+  });
+}
+function closeEditModal(){ closeModalEl(document.getElementById('edit-modal')); currentEditType = null; currentEditId = null; }
+
+/* ================= ГРУППЫ ================= */
+function renderGroups(){
+  const q = (document.getElementById('search-group').value || '').toLowerCase().trim();
+  const box = document.getElementById('groups-list');
+  let list = allGroups.filter(g => !g.is_camp);
+  if (q) list = list.filter(g => (g.name||'').toLowerCase().includes(q));
+  if (!list.length) { box.innerHTML = emptyState('Групп нет','Создайте первую группу'); return; }
+  box.innerHTML = list.map(g => {
+    const tutor = allTutors.find(t => t.id === g.tutor_id);
+    return `<div class="item"><div class="item-header" onclick="openGroupProfile(${g.id})">
+      <div class="item-name">${esc(g.name)}
+        <span class="tag-badge">Ур. ${g.level}</span>
+        ${g.day_of_week ? '<span class="tag-badge">'+esc(g.day_of_week)+'</span>' : ''}
+        ${timeRange(g) ? '<span class="tag-badge time-badge">'+esc(timeRange(g))+'</span>' : ''}
+        ${tutor ? '<span class="tag-badge">'+esc(tutor.name)+'</span>' : ''}
+        <span class="tag-badge">${(g.student_ids||[]).length} уч.</span></div>
+      <div class="item-actions" onclick="event.stopPropagation()">
+        <button class="mini-btn" onclick="openGroupModal(${g.id})">✎</button>
+        <button class="del-btn" onclick="deleteGroup(${g.id})">Удалить</button>
+      </div></div></div>`;
+  }).join('');
+}
+function renderCamps(){
+  const box = document.getElementById('camps-list');
+  const list = allGroups.filter(g => g.is_camp);
+  if (!list.length) { box.innerHTML = emptyState('Каникул нет','Добавьте кибер каникулы'); return; }
+  box.innerHTML = list.map(g => `
+    <div class="item camp-item"><div class="item-header" onclick="openGroupProfile(${g.id})">
+      <div class="item-name">${esc(g.name)}<span class="tag-badge camp-badge">🏖</span>
+        <span class="tag-badge">${(g.student_ids||[]).length} уч.</span></div>
+      <div class="item-actions" onclick="event.stopPropagation()">
+        <button class="mini-btn" onclick="openGroupModal(${g.id},true)">✎</button>
+        <button class="del-btn" onclick="deleteGroup(${g.id})">Удалить</button>
+      </div></div></div>`).join('');
+}
+async function deleteGroup(id){
+  const ok = await askConfirm('Удалить группу?','Удаление'); if (!ok) return;
+  try { await api('/groups/'+id,{method:'DELETE'}); allGroups = allGroups.filter(g=>g.id!==id); renderGroups(); renderCamps(); toast('Удалено','success'); }
+  catch(e){ toast('Ошибка: '+e.message,'error'); }
+}
+function openGroupModal(id, camp){
+  modalIsCamp = !!camp;
+  document.getElementById('modal-title').textContent = id ? 'Редактировать группу' : (camp ? 'Новые кибер каникулы' : 'Создать группу');
+  document.getElementById('modal-camp-note').style.display = camp ? 'block' : 'none';
+  document.getElementById('modal-day-field').style.display = camp ? 'none' : 'block';
+  document.getElementById('modal-group-id').value = id || '';
+  const g = id ? allGroups.find(x => x.id === id) : null;
+  document.getElementById('modal-g-name').value = g ? g.name : '';
+  document.getElementById('modal-g-level').value = g ? g.level : 1;
+  document.getElementById('modal-g-day').value = g && g.day_of_week ? g.day_of_week : 'Понедельник';
+  document.getElementById('modal-g-start').value = g && g.time_start ? g.time_start : '';
+  document.getElementById('modal-g-end').value = g && g.time_end ? g.time_end : '';
+  const tutorSel = document.getElementById('modal-g-tutor');
+  tutorSel.innerHTML = '<option value="">— без тьютора —</option>' +
+    allTutors.map(t => `<option value="${t.id}"${g && g.tutor_id===t.id?' selected':''}>${esc(t.name)}</option>`).join('');
+  const selected = new Set(g ? (g.student_ids||[]) : []);
+  const stBox = document.getElementById('modal-g-students');
+  stBox.innerHTML = allStudents.length ? allStudents.map(s => `
+    <label style="display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px;font-weight:600;cursor:pointer">
+      <input type="checkbox" value="${s.id}"${selected.has(s.id)?' checked':''}>
+      <span>${esc(s.name)} <span style="color:#888;font-size:12px">${esc(ageText(s.birth))}</span></span>
+    </label>`).join('') : '<p style="color:#888;padding:8px">Учеников нет</p>';
+  openModalEl(document.getElementById('group-modal'));
+}
+function closeGroupModal(){ closeModalEl(document.getElementById('group-modal')); }
+async function saveGroup(btn){
+  return withBusy(btn, async () => {
+    const id = document.getElementById('modal-group-id').value;
+    const studentIds = [...document.querySelectorAll('#modal-g-students input:checked')].map(x => Number(x.value));
+    const payload = {
+      name: document.getElementById('modal-g-name').value.trim(),
+      level: Number(document.getElementById('modal-g-level').value),
+      day_of_week: modalIsCamp ? null : document.getElementById('modal-g-day').value,
+      time_start: document.getElementById('modal-g-start').value,
+      time_end: document.getElementById('modal-g-end').value,
+      tutor_id: document.getElementById('modal-g-tutor').value || null,
+      is_camp: modalIsCamp,
+      modules_plan: [],
+      student_ids: studentIds
+    };
+    if (!payload.name) return toast('Введите название','warn');
+    try {
+      if (id) {
+        await api('/groups/'+id, { method:'PUT', body: JSON.stringify(payload) });
+        const g = allGroups.find(x => x.id === Number(id));
+        if (g) Object.assign(g, payload, { id: Number(id) });
+        toast('Группа обновлена','success');
+      } else {
+        const { id: newId } = await api('/groups', { method:'POST', body: JSON.stringify(payload) });
+        allGroups.push({ ...payload, id: newId });
+        toast('Группа создана','success');
+      }
+      closeGroupModal();
+      renderGroups(); renderCamps();
+    } catch (e) { toast('Ошибка: ' + e.message,'error'); }
+  });
+}
+function openGroupProfile(id){
+  const g = allGroups.find(x => x.id === id); if (!g) return;
+  currentProfileGroupId = id;
+  document.querySelectorAll('.screen').forEach(x => x.style.display = 'none');
+  document.getElementById('screen-group-profile').style.display = 'block';
+  const tutor = allTutors.find(t => t.id === g.tutor_id);
+  const students = allStudents.filter(s => (g.student_ids||[]).includes(s.id));
+  document.getElementById('group-profile-content').innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar">${esc((g.name||'?').charAt(0).toUpperCase())}</div>
+      <div><h2 class="profile-name" style="color:var(--kiber-dark);border:none">${esc(g.name)}</h2>
+        ${g.is_camp ? '<span class="profile-status" style="background:#fff1d6;color:#a06a00">🏖 Кибер каникулы</span>' : ''}</div>
+    </div>
+    <div class="profile-grid">
+      <div class="profile-card"><div class="label">Уровень</div><div class="value">${g.level}</div></div>
+      <div class="profile-card"><div class="label">День</div><div class="value">${esc(g.day_of_week || '—')}</div></div>
+      <div class="profile-card"><div class="label">Время</div><div class="value">${esc(timeRange(g) || '—')}</div></div>
+      <div class="profile-card"><div class="label">Тьютор</div><div class="value">${tutor ? esc(tutor.name) : '—'}</div></div>
+    </div>
+    <h3 style="font-size:17px;margin-bottom:12px">Ученики (${students.length})</h3>
+    ${students.length ? students.map(s => `<div class="group-student-link" onclick="openStudentProfile(${s.id})">
+      <span>${esc(s.name)}</span><span class="tag-badge">${esc(ageText(s.birth))}</span></div>`).join('')
+      : '<p style="color:#888">В группе пока никого нет</p>'}`;
+}
+function closeGroupProfile(){
+  currentProfileGroupId = null;
+  document.getElementById('screen-group-profile').style.display = 'none';
+  document.getElementById('screen-groups').style.display = 'block';
+}
+
+/* ================= СТАРТ ================= */
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = lsGet('currentUser');
+  if (saved) { try { currentUser = JSON.parse(saved); } catch(e){} }
+  if (currentUser){
+    loadAll().then(showApp).catch(() => logout());
+  }
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') login(document.getElementById('login-btn'));
+  });
+});
+</script>
+</body>
+</html>
